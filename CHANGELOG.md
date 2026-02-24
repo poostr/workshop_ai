@@ -31,3 +31,19 @@
   - `ADR/ADR-0002-backend-bootstrap-init-002.md`;
   - `tasks/INIT-002.md`.
 
+### INIT-003
+
+- Выполнен bootstrap frontend на `React + TypeScript + Vite`.
+- Добавлена минимальная структура frontend-приложения:
+  - роутинг (`/` и `/types/:typeId`) с заглушками страниц `Main` и `TypeDetails`;
+  - базовый layout с переключателем языка RU/EN;
+  - каркас i18n (`react-i18next`) со словарями `ru/en`;
+  - каркас API-клиента (`src/shared/api/client.ts`) и типизация ошибок API.
+- Добавлены frontend-конфиги и npm-скрипты (`dev`, `build`, `preview`).
+- Подтверждена сборка `frontend` в `dist/`.
+- В `BACKLOG.md` задача `INIT-003` отмечена как выполненная.
+- В `BACKLOG.md` добавлена новая задача `INIT-006` (отдельный quality gate для frontend typecheck).
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0003-frontend-bootstrap-init-003.md`;
+  - `tasks/INIT-003.md`.
+

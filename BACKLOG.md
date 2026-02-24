@@ -37,7 +37,7 @@ Task DOD
 - Backend запускается локально (в контейнере) и отвечает на `GET /health`.
 - Конфиг читается через env (например, `DATABASE_URL`, `APP_ENV`, `LOG_LEVEL`).
 
-- [ ] INIT-003 Bootstrap frontend (React + TypeScript + сборка)
+- [x] INIT-003 Bootstrap frontend (React + TypeScript + сборка)
 Task Context
 - Выбран фронтенд: React + TS.
 - Нужны: роутинг, базовый layout, подготовка i18n (RU/EN), API клиент каркас.
@@ -63,6 +63,14 @@ Task DOD
 - Есть команды (Makefile или scripts) для:
   - backend: format + lint + pytest
   - frontend: format + lint + build + tests (если добавлены)
+
+- [ ] INIT-006 Frontend typecheck как отдельный quality gate
+Task Context
+- На bootstrap этапе выявлен отдельный scope по согласованию tsconfig и среды,
+  чтобы строгая типизация проверялась независимо от сборки.
+Task DOD
+- Добавлена воспроизводимая команда `frontend` для typecheck.
+- Конфигурация TS стабильно проходит проверку в локальном окружении и в контейнере.
 
 - [ ] CLEAN-001 Приборка этапа A
 Task Context

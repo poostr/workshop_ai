@@ -1,0 +1,21 @@
+from fastapi import FastAPI
+
+from app.api.v1.router import router as api_v1_router
+from app.config import get_settings
+
+
+def create_app() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(title="Miniatures Progress Tracker API", version="0.1.0")
+
+    app.include_router(api_v1_router, prefix="/api/v1")
+
+    @app.get("/health", tags=["system"])
+    def health() -> dict[str, str]:
+        return {"status": "ok", "env": settings.app_env}
+
+    return app
+
+
+app = create_app()
+

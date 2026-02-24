@@ -28,7 +28,7 @@ Task DOD
 - Созданы директории и базовые файлы.
 - `README.md` описывает запуск `docker compose up --build` и где лежат данные Postgres (volume), плюс предупреждение про `down -v`.
 
-- [ ] INIT-002 Bootstrap backend (FastAPI, конфиг, health)
+- [x] INIT-002 Bootstrap backend (FastAPI, конфиг, health)
 Task Context
 - Стек: Python + FastAPI, конфигурация через env (без секретов в репо).
 - Нужны: структура приложения, роутинг `/api/v1`, health endpoint для compose.

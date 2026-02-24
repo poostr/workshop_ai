@@ -8,7 +8,11 @@ export function AppLayout() {
     <div className="app-shell">
       <header className="app-header">
         <h1>{t("app.title")}</h1>
-        <div className="lang-switcher" role="group" aria-label={t("app.language")}>
+        <div
+          className="lang-switcher"
+          role="group"
+          aria-label={t("app.language")}
+        >
           <button
             type="button"
             className={i18n.language === "ru" ? "active" : ""}

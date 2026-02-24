@@ -64,3 +64,18 @@
   - `ADR/ADR-0004-docker-compose-init-004.md`;
   - `tasks/INIT-004.md`.
 
+### INIT-005
+
+- Добавлен единый `Makefile` с quality gate командами для backend/frontend и общим таргетом `make quality`.
+- Для backend добавлены format/lint команды на базе `ruff`:
+  - зависимость `ruff` в `backend/pyproject.toml` (dev);
+  - конфигурация `[tool.ruff]` для воспроизводимого поведения.
+- Для frontend добавлены quality scripts:
+  - `npm run format` (Prettier),
+  - `npm run lint` (ESLint flat config + TypeScript),
+  - `npm run build`,
+  - `npm run test` (entrypoint для текущего этапа до добавления тестов).
+- Добавлен frontend линт-конфиг `frontend/eslint.config.js`.
+- `README.md` дополнен разделом `Quality Gates` с командами запуска.
+- В `BACKLOG.md` задача `INIT-005` отмечена выполненной.
+

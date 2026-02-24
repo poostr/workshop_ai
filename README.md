@@ -23,3 +23,17 @@
 
 Перед потенциально рискованными операциями делайте экспорт данных из приложения.
 
+## Quality Gates
+
+- Backend:
+  - `make backend-format`
+  - `make backend-lint`
+  - `make backend-test`
+- Frontend:
+  - `make frontend-format`
+  - `make frontend-lint`
+  - `make frontend-build`
+  - `make frontend-test`
+- Полный прогон всех quality gates:
+  - `make quality`
+

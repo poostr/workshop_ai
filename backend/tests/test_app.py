@@ -17,4 +17,3 @@ def test_api_v1_router_is_mounted() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": "v1"}
-

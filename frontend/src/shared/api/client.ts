@@ -28,7 +28,9 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as ApiErrorResponse | null;
+      const payload = (await response
+        .json()
+        .catch(() => null)) as ApiErrorResponse | null;
       const code = payload?.code ?? "ERR_UNKNOWN";
       const detail = payload?.detail ?? "Request failed";
 

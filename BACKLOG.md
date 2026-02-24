@@ -55,7 +55,7 @@ Task DOD
 - Nginx отдаёт SPA и корректно проксирует API.
 - Миграции БД накатываются при старте app контейнера.
 
-- [ ] INIT-005 Quality gates (format/lint/test entrypoints)
+- [x] INIT-005 Quality gates (format/lint/test entrypoints)
 Task Context
 - Нужны быстрые команды для линтинга/форматирования/тестов backend и frontend.
 - Цель: чтобы последующие задачи могли требовать «запусти линтер/тесты».

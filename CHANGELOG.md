@@ -108,3 +108,24 @@
   - `ADR/ADR-0007-clean-stage-a-hygiene.md`;
   - `tasks/CLEAN-001.md`.
 
+### DB-001
+
+- Реализована доменная константа стадий в backend (`backend/app/domain/stages.py`) как единый источник допустимых значений (`IN_BOX`, `BUILDING`, `PRIMING`, `PAINTING`, `DONE`).
+- Добавлен слой моделей SQLAlchemy:
+  - `backend/app/db/base.py` (декларативная база);
+  - `backend/app/db/models.py` (`miniature_types`, `stage_counts`, `history_logs`);
+  - `backend/app/db/__init__.py` для экспорта моделей.
+- В моделях и миграции зафиксированы ключевые ограничения данных:
+  - `UNIQUE` на `miniature_types.name`;
+  - `CHECK stage_counts.count >= 0`;
+  - `UNIQUE(type_id, stage_name)` для `stage_counts`;
+  - `CHECK` на допустимые значения стадий для `stage_name`, `from_stage`, `to_stage`;
+  - `FK` с `ON DELETE CASCADE` и индексы по `type_id`.
+- Обновлён Alembic runtime:
+  - `backend/alembic/env.py` теперь использует `Base.metadata`;
+  - ревизия `backend/alembic/versions/0001_init_schema_placeholder.py` заменена с placeholder на создание целевой схемы БД.
+- В `BACKLOG.md` задача `DB-001` отмечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0008-db-schema-and-constraints-db-001.md`;
+  - `tasks/DB-001.md`.
+

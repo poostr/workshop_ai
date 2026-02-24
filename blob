@@ -1,0 +1,326 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import io
+import re
+import subprocess
+import sys
+import tokenize
+from collections import defaultdict
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parent
+
+SKIP_DIRS = {
+    ".git",
+    ".hg",
+    ".svn",
+    ".venv",
+    "venv",
+    "node_modules",
+    "dist",
+    "build",
+    "target",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".mypy_cache",
+    ".idea",
+    ".vscode",
+    ".next",
+    ".nuxt",
+    ".cache",
+}
+
+ALLOWED_EXTENSIONS = {
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".java",
+    ".kt",
+    ".go",
+    ".rs",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".cs",
+    ".php",
+    ".rb",
+    ".swift",
+    ".scala",
+    ".sql",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".fish",
+    ".ps1",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".json",
+    ".ini",
+    ".cfg",
+    ".conf",
+    ".env.example",
+    ".md",
+    ".rst",
+    ".txt",
+    ".html",
+    ".css",
+    ".scss",
+    ".less",
+    ".vue",
+    ".svelte",
+    ".graphql",
+    ".gql",
+    ".proto",
+    ".dockerignore",
+}
+
+ALLOWED_BASENAMES = {
+    "Makefile",
+    "Dockerfile",
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "AGENTS.md",
+    "CHANGELOG.md",
+    "README.md",
+}
+
+DOC_KEYWORDS = ("adr", "techspec", "prd", "changelog", "agents")
+
+BLOCK_COMMENT_REGEXES = [
+    re.compile(r"/\*.*?\*/", re.DOTALL),
+    re.compile(r"<!--.*?-->", re.DOTALL),
+]
+
+
+def should_skip_path(path: Path) -> bool:
+    return any(part in SKIP_DIRS for part in path.parts)
+
+
+def has_supported_extension(path: Path) -> bool:
+    suffix = path.suffix.lower()
+    if suffix in ALLOWED_EXTENSIONS:
+        return True
+    name = path.name.lower()
+    return any(name.endswith(ext) for ext in ALLOWED_EXTENSIONS if ext.count(".") > 1)
+
+
+def should_include(path: Path) -> bool:
+    if should_skip_path(path):
+        return False
+    if path.name in ALLOWED_BASENAMES:
+        return True
+    if has_supported_extension(path):
+        return True
+    lowered = path.name.lower()
+    if any(keyword in lowered for keyword in DOC_KEYWORDS) and path.suffix.lower() in {".md", ".txt", ".rst"}:
+        return True
+    if "ADR" in path.parts and path.suffix.lower() == ".md":
+        return True
+    return False
+
+
+def is_probably_binary(raw: bytes) -> bool:
+    return b"\x00" in raw
+
+
+def remove_python_comments(text: str) -> str:
+    output = []
+    reader = io.StringIO(text).readline
+    try:
+        for token in tokenize.generate_tokens(reader):
+            if token.type == tokenize.COMMENT:
+                continue
+            output.append(token)
+        return tokenize.untokenize(output)
+    except Exception:
+        return text
+
+
+def strip_inline_comment(line: str, marker: str) -> str:
+    in_single = False
+    in_double = False
+    escaped = False
+    i = 0
+    while i < len(line):
+        ch = line[i]
+        if escaped:
+            escaped = False
+            i += 1
+            continue
+        if ch == "\\":
+            escaped = True
+            i += 1
+            continue
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            i += 1
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            i += 1
+            continue
+        if not in_single and not in_double and line.startswith(marker, i):
+            return line[:i]
+        i += 1
+    return line
+
+
+def dehydrate_text(path: Path, text: str) -> str:
+    suffix = path.suffix.lower()
+    result = text.replace("\r\n", "\n").replace("\r", "\n")
+    if suffix == ".py":
+        result = remove_python_comments(result)
+
+    for pattern in BLOCK_COMMENT_REGEXES:
+        result = pattern.sub("", result)
+
+    comment_markers = []
+    if suffix in {".js", ".jsx", ".ts", ".tsx", ".java", ".go", ".rs", ".c", ".h", ".cpp", ".hpp", ".cs", ".php", ".swift", ".scala"}:
+        comment_markers = ["//"]
+    elif suffix in {".sh", ".bash", ".zsh", ".fish", ".yaml", ".yml", ".toml", ".ini", ".cfg", ".conf", ".env.example", ".dockerignore"}:
+        comment_markers = ["#"]
+    elif suffix in {".sql"}:
+        comment_markers = ["--"]
+
+    dehydrated_lines = []
+    for line in result.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        for marker in comment_markers:
+            line = strip_inline_comment(line, marker).strip()
+        if not line:
+            continue
+        line = re.sub(r"\s+", " ", line)
+        if line:
+            dehydrated_lines.append(line)
+    return "\n".join(dehydrated_lines)
+
+
+def type_key(path: Path) -> str:
+    ext = path.suffix.lower()
+    return ext if ext else path.name
+
+
+def collect_files(root: Path) -> list[Path]:
+    files: list[Path] = []
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        if should_include(path):
+            files.append(path)
+    files.sort(key=lambda p: p.as_posix())
+    return files
+
+
+def copy_to_clipboard(text: str) -> None:
+    subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
+
+
+def format_bytes(size: int) -> str:
+    units = ["B", "KB", "MB", "GB"]
+    value = float(size)
+    for unit in units:
+        if value < 1024 or unit == units[-1]:
+            return f"{value:.2f} {unit}"
+        value /= 1024
+    return f"{size} B"
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="Build dehydrated project blob for LLM input.")
+    parser.add_argument("--print-blob", action="store_true", help="Also print the dehydrated blob to stdout.")
+    args = parser.parse_args()
+
+    files = collect_files(ROOT)
+    if not files:
+        print("No files matched inclusion rules.")
+        return 1
+
+    totals = {
+        "files_total": 0,
+        "files_used": 0,
+        "original_bytes": 0,
+        "dehydrated_bytes": 0,
+    }
+    per_type: dict[str, dict[str, int]] = defaultdict(lambda: {"files": 0, "original_bytes": 0, "dehydrated_bytes": 0})
+
+    blob_parts: list[str] = []
+    for path in files:
+        totals["files_total"] += 1
+        try:
+            raw = path.read_bytes()
+        except OSError:
+            continue
+        if is_probably_binary(raw):
+            continue
+
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            text = raw.decode("utf-8", errors="ignore")
+
+        dehydrated = dehydrate_text(path, text)
+        if not dehydrated:
+            continue
+
+        rel = path.relative_to(ROOT).as_posix()
+        section = f"### FILE: {rel}\n{dehydrated}"
+        blob_parts.append(section)
+
+        orig_size = len(raw)
+        dehyd_size = len(dehydrated.encode("utf-8"))
+        key = type_key(path)
+        per_type[key]["files"] += 1
+        per_type[key]["original_bytes"] += orig_size
+        per_type[key]["dehydrated_bytes"] += dehyd_size
+        totals["files_used"] += 1
+        totals["original_bytes"] += orig_size
+        totals["dehydrated_bytes"] += dehyd_size
+
+    blob_text = "\n\n".join(blob_parts)
+    if not blob_text:
+        print("No non-empty text content after dehydration.")
+        return 1
+
+    try:
+        copy_to_clipboard(blob_text)
+        clipboard_status = "ok"
+    except Exception as exc:
+        clipboard_status = f"failed: {exc}"
+
+    print("Blob build complete")
+    print(f"- scanned files: {totals['files_total']}")
+    print(f"- included files: {totals['files_used']}")
+    print(f"- original size: {format_bytes(totals['original_bytes'])} ({totals['original_bytes']} bytes)")
+    print(f"- dehydrated size: {format_bytes(totals['dehydrated_bytes'])} ({totals['dehydrated_bytes']} bytes)")
+    ratio = (totals["dehydrated_bytes"] / totals["original_bytes"] * 100.0) if totals["original_bytes"] else 0.0
+    print(f"- compression ratio: {ratio:.2f}%")
+    print(f"- clipboard: {clipboard_status}")
+    print("")
+    print("By file type:")
+    for key in sorted(per_type):
+        entry = per_type[key]
+        print(
+            f"  {key:>12} | files={entry['files']:4d} | "
+            f"orig={entry['original_bytes']:10d} | dehyd={entry['dehydrated_bytes']:10d}"
+        )
+
+    if args.print_blob:
+        print("\n--- BLOB START ---\n")
+        print(blob_text)
+        print("\n--- BLOB END ---")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

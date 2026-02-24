@@ -47,3 +47,20 @@
   - `ADR/ADR-0003-frontend-bootstrap-init-003.md`;
   - `tasks/INIT-003.md`.
 
+### INIT-004
+
+- Обновлён `docker-compose.yml` до целевой связки `app + postgres + nginx` с корректными зависимостями готовности:
+  - добавлен `healthcheck` для `postgres`;
+  - `app` запускается после готовности БД (`service_healthy`).
+- Реализован автопрогон миграций при старте backend:
+  - добавлены `backend/alembic.ini`, `backend/alembic/env.py`, стартовая ревизия `backend/alembic/versions/0001_init_schema_placeholder.py`;
+  - запуск `app` переведён на `backend/entrypoint.sh` (`alembic upgrade head` перед `uvicorn`).
+- `nginx` переведён на сборку собственного образа:
+  - добавлен `ops/nginx/Dockerfile` (multi-stage сборка frontend и копирование `dist` в nginx image);
+  - в compose убраны runtime bind mounts frontend-каталога.
+- Добавлен `.dockerignore` для сокращения контекста сборки.
+- В `BACKLOG.md` задача `INIT-004` отмечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0004-docker-compose-init-004.md`;
+  - `tasks/INIT-004.md`.
+

@@ -1,0 +1,341 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from collections import defaultdict
+from dataclasses import dataclass
+from pathlib import Path
+
+
+EXCLUDED_DIRS = {
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    ".next",
+    ".cursor",
+    ".idea",
+    ".pytest_cache",
+    ".mypy_cache",
+    "coverage",
+    "target",
+    "out",
+}
+
+EXCLUDED_FILES = {
+    ".DS_Store",
+    ".env",
+    ".env.local",
+    ".env.development",
+    ".env.production",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "Pipfile.lock",
+}
+
+DOC_PRIORITY = {
+    "AGENTS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "PRD.md",
+    "TECHSPEC_GEMINI.md",
+    "BACKLOG.md",
+}
+
+ALLOWED_EXTENSIONS = {
+    ".py",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".java",
+    ".kt",
+    ".go",
+    ".rs",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".cs",
+    ".php",
+    ".rb",
+    ".swift",
+    ".scala",
+    ".sql",
+    ".sh",
+    ".zsh",
+    ".bash",
+    ".ps1",
+    ".yaml",
+    ".yml",
+    ".json",
+    ".toml",
+    ".ini",
+    ".conf",
+    ".cfg",
+    ".env.example",
+    ".dockerfile",
+    ".md",
+    ".rst",
+    ".txt",
+    ".xml",
+    ".html",
+    ".css",
+    ".scss",
+    ".less",
+}
+
+HASH_COMMENT_EXT = {
+    ".py",
+    ".rb",
+    ".sh",
+    ".zsh",
+    ".bash",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".ini",
+    ".cfg",
+    ".conf",
+}
+
+SLASH_COMMENT_EXT = {
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".java",
+    ".kt",
+    ".go",
+    ".rs",
+    ".c",
+    ".h",
+    ".cpp",
+    ".hpp",
+    ".cs",
+    ".php",
+    ".swift",
+    ".scala",
+    ".css",
+    ".scss",
+    ".less",
+}
+
+SQL_COMMENT_EXT = {".sql"}
+XML_LIKE_EXT = {".xml", ".html"}
+BLOCK_COMMENT_EXT = SLASH_COMMENT_EXT | {".sql", ".xml", ".html"}
+
+
+@dataclass
+class FileStats:
+    files: int = 0
+    original_bytes: int = 0
+    dehydrated_bytes: int = 0
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Concatenate and dehydrate project source/docs, then copy to clipboard."
+    )
+    parser.add_argument(
+        "--root",
+        default=".",
+        help="Project root directory (default: current directory).",
+    )
+    parser.add_argument(
+        "--no-clipboard",
+        action="store_true",
+        help="Do not copy dehydrated result to clipboard.",
+    )
+    return parser.parse_args()
+
+
+def is_probably_binary(path: Path) -> bool:
+    try:
+        chunk = path.read_bytes()[:4096]
+    except OSError:
+        return True
+    if b"\x00" in chunk:
+        return True
+    return False
+
+
+def should_include(path: Path, root: Path) -> bool:
+    if path.name in EXCLUDED_FILES:
+        return False
+    if not path.is_file():
+        return False
+    if path.name == "blob":
+        return False
+    rel = path.relative_to(root)
+    if any(part in EXCLUDED_DIRS for part in rel.parts):
+        return False
+    if is_probably_binary(path):
+        return False
+    ext = path.suffix.lower()
+    if ext in ALLOWED_EXTENSIONS:
+        return True
+    basename = path.name
+    if basename in DOC_PRIORITY:
+        return True
+    if basename.startswith("ADR-") and basename.lower().endswith(".md"):
+        return True
+    if basename == "Dockerfile":
+        return True
+    return False
+
+
+def remove_block_comments(text: str, ext: str) -> str:
+    if ext in BLOCK_COMMENT_EXT:
+        text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    if ext in XML_LIKE_EXT:
+        text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    return text
+
+
+def strip_inline_comment(line: str, ext: str) -> str:
+    if ext in HASH_COMMENT_EXT:
+        if re.match(r"^\s*#", line):
+            return ""
+        line = re.sub(r"\s+#.*$", "", line)
+    elif ext in SLASH_COMMENT_EXT:
+        if re.match(r"^\s*//", line):
+            return ""
+        line = re.sub(r"(?<!:)//.*$", "", line)
+    elif ext in SQL_COMMENT_EXT:
+        if re.match(r"^\s*--", line):
+            return ""
+        line = re.sub(r"\s+--.*$", "", line)
+    return line
+
+
+def dehydrate(text: str, ext: str) -> str:
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = remove_block_comments(text, ext)
+
+    out_lines: list[str] = []
+    for raw_line in text.split("\n"):
+        line = strip_inline_comment(raw_line, ext)
+        line = re.sub(r"\t+", " ", line)
+        line = re.sub(r" {2,}", " ", line)
+        line = line.strip()
+        if not line:
+            continue
+        out_lines.append(line)
+
+    return "\n".join(out_lines)
+
+
+def extension_group(path: Path) -> str:
+    name = path.name
+    if name in DOC_PRIORITY or (name.startswith("ADR-") and name.endswith(".md")):
+        return "docs(.md)"
+    if name == "Dockerfile":
+        return "Dockerfile"
+    ext = path.suffix.lower()
+    return ext or "<no_ext>"
+
+
+def prioritized_sort(paths: list[Path], root: Path) -> list[Path]:
+    def key(p: Path) -> tuple[int, str]:
+        rel_name = p.relative_to(root).name
+        if rel_name in DOC_PRIORITY:
+            return (0, str(p.relative_to(root)))
+        if rel_name.startswith("ADR-") and rel_name.endswith(".md"):
+            return (1, str(p.relative_to(root)))
+        return (2, str(p.relative_to(root)))
+
+    return sorted(paths, key=key)
+
+
+def copy_to_clipboard(text: str) -> None:
+    subprocess.run(["pbcopy"], input=text.encode("utf-8"), check=True)
+
+
+def main() -> int:
+    args = parse_args()
+    root = Path(args.root).resolve()
+    if not root.exists() or not root.is_dir():
+        print(f"ERROR: root is not a directory: {root}", file=sys.stderr)
+        return 1
+
+    candidates = [p for p in root.rglob("*") if should_include(p, root)]
+    files = prioritized_sort(candidates, root)
+
+    grouped: dict[str, FileStats] = defaultdict(FileStats)
+    total_original = 0
+    total_dehydrated = 0
+    parts: list[str] = []
+    included = 0
+
+    for path in files:
+        rel = str(path.relative_to(root))
+        ext_group = extension_group(path)
+        try:
+            original = path.read_text(encoding="utf-8", errors="ignore")
+        except OSError:
+            continue
+        dehydrated = dehydrate(original, path.suffix.lower())
+        if not dehydrated:
+            continue
+
+        header = f"=== FILE: {rel} ==="
+        parts.append(header)
+        parts.append(dehydrated)
+        parts.append("")
+
+        orig_b = len(original.encode("utf-8", errors="ignore"))
+        dehyd_b = len(dehydrated.encode("utf-8", errors="ignore"))
+
+        included += 1
+        total_original += orig_b
+        total_dehydrated += dehyd_b
+        grouped[ext_group].files += 1
+        grouped[ext_group].original_bytes += orig_b
+        grouped[ext_group].dehydrated_bytes += dehyd_b
+
+    blob_text = "\n".join(parts).strip() + "\n"
+
+    if not args.no_clipboard:
+        try:
+            copy_to_clipboard(blob_text)
+            clip_status = "OK (pbcopy)"
+        except Exception as exc:  # noqa: BLE001
+            clip_status = f"FAILED ({exc})"
+    else:
+        clip_status = "SKIPPED (--no-clipboard)"
+
+    print("BLOB REPORT")
+    print(f"root: {root}")
+    print(f"files_scanned: {len(candidates)}")
+    print(f"files_included_after_dehydration: {included}")
+    print(f"total_original_bytes: {total_original}")
+    print(f"total_dehydrated_bytes: {total_dehydrated}")
+    ratio = (total_dehydrated / total_original * 100.0) if total_original else 0.0
+    print(f"dehydration_ratio: {ratio:.2f}%")
+    print(f"result_stream_bytes: {len(blob_text.encode('utf-8'))}")
+    print(f"clipboard: {clip_status}")
+    print("")
+    print("BY TYPE")
+    print("type\tfiles\toriginal_bytes\tdehydrated_bytes")
+
+    for kind, stats in sorted(
+        grouped.items(), key=lambda item: item[1].dehydrated_bytes, reverse=True
+    ):
+        print(
+            f"{kind}\t{stats.files}\t{stats.original_bytes}\t{stats.dehydrated_bytes}"
+        )
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

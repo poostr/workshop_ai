@@ -45,7 +45,7 @@ Task DOD
 - `frontend` собирается в `dist/`.
 - В dev-режиме UI открывается и отображает заглушку страниц `Main` и `TypeDetails`.
 
-- [ ] INIT-004 Docker Compose (app + postgres + nginx)
+- [x] INIT-004 Docker Compose (app + postgres + nginx)
 Task Context
 - Требование: локальный запуск одной командой. FastAPI отдельно от nginx.
 - Nginx раздаёт `frontend/dist` и проксирует API на backend (например, `/api` -> `app:8000`).

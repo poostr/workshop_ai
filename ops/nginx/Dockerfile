@@ -6,6 +6,7 @@ COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
 COPY frontend /frontend
+RUN npm run typecheck
 RUN npm run build
 
 FROM nginx:1.27-alpine

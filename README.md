@@ -32,6 +32,7 @@
 - Frontend:
   - `make frontend-format`
   - `make frontend-lint`
+  - `make frontend-typecheck`
   - `make frontend-build`
   - `make frontend-test`
 - Полный прогон всех quality gates:

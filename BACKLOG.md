@@ -64,7 +64,7 @@ Task DOD
   - backend: format + lint + pytest
   - frontend: format + lint + build + tests (если добавлены)
 
-- [ ] INIT-006 Frontend typecheck как отдельный quality gate
+- [x] INIT-006 Frontend typecheck как отдельный quality gate
 Task Context
 - На bootstrap этапе выявлен отдельный scope по согласованию tsconfig и среды,
   чтобы строгая типизация проверялась независимо от сборки.

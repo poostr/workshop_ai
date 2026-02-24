@@ -79,3 +79,16 @@
 - `README.md` дополнен разделом `Quality Gates` с командами запуска.
 - В `BACKLOG.md` задача `INIT-005` отмечена выполненной.
 
+### INIT-006
+
+- Добавлен отдельный frontend quality gate для строгой проверки типов:
+  - `frontend/package.json`: новый script `typecheck` (`tsc --noEmit -p tsconfig.json`);
+  - `Makefile`: добавлен таргет `frontend-typecheck` и включён в общий `quality`.
+- Обновлён `README.md` в разделе `Quality Gates` с явной командой `make frontend-typecheck`.
+- Для воспроизводимости в контейнере обновлён `ops/nginx/Dockerfile`: перед `npm run build` теперь выполняется `npm run typecheck`.
+- Стабилизирован backend test gate в `Makefile`: `BACKEND_PYTHON` теперь автоматически использует `backend/.venv/bin/python`, если локальный venv существует (fallback на `python3` сохранён).
+- В `BACKLOG.md` задача `INIT-006` отмечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0006-frontend-typecheck-gate-init-006.md`;
+  - `tasks/INIT-006.md`.
+

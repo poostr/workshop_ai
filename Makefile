@@ -1,10 +1,10 @@
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
-BACKEND_PYTHON ?= python3
+BACKEND_PYTHON ?= $(if $(wildcard $(BACKEND_DIR)/.venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: quality backend-format backend-lint backend-test frontend-format frontend-lint frontend-build frontend-test
+.PHONY: quality backend-format backend-lint backend-test frontend-format frontend-lint frontend-typecheck frontend-build frontend-test
 
-quality: backend-format backend-lint backend-test frontend-format frontend-lint frontend-build frontend-test
+quality: backend-format backend-lint backend-test frontend-format frontend-lint frontend-typecheck frontend-build frontend-test
 
 backend-format:
 	cd $(BACKEND_DIR) && $(BACKEND_PYTHON) -m ruff format app tests
@@ -20,6 +20,9 @@ frontend-format:
 
 frontend-lint:
 	cd $(FRONTEND_DIR) && npm run lint
+
+frontend-typecheck:
+	cd $(FRONTEND_DIR) && npm run typecheck
 
 frontend-build:
 	cd $(FRONTEND_DIR) && npm run build

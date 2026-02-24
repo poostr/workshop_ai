@@ -92,3 +92,19 @@
   - `ADR/ADR-0006-frontend-typecheck-gate-init-006.md`;
   - `tasks/INIT-006.md`.
 
+### CLEAN-001
+
+- Удалены неиспользуемые шаблонные файлы-заглушки:
+  - `backend/alembic/.gitkeep`;
+  - `backend/app/.gitkeep`;
+  - `backend/tests/.gitkeep`;
+  - `frontend/src/.gitkeep`.
+- Удалён лишний служебный файл `blob`, не используемый приложением и процессом сборки.
+- Усилен `.gitignore`:
+  - добавлены шаблоны для секретов (`.env.*` с исключением `.env.example`);
+  - добавлены артефакты разработки и сборки (`backend/.venv/`, `backend/*.egg-info/`, `frontend/node_modules/`, `frontend/dist/`, `.coverage`, `.DS_Store`).
+- В `BACKLOG.md` задача `CLEAN-001` отмечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0007-clean-stage-a-hygiene.md`;
+  - `tasks/CLEAN-001.md`.
+

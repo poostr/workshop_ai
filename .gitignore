@@ -1,8 +1,19 @@
 .env
+.env.*
+!.env.example
+
+.DS_Store
 __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+
 node_modules/
+frontend/node_modules/
 dist/
+frontend/dist/
+
+backend/.venv/
+backend/*.egg-info/
 

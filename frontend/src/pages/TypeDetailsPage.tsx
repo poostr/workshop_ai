@@ -161,6 +161,18 @@ function MoveSection({
   );
 }
 
+function formatHistoryTimestamp(iso: string, locale: string): string {
+  const date = new Date(iso);
+  const resolvedLocale = locale === "ru" ? "ru-RU" : "en-US";
+  return date.toLocaleString(resolvedLocale, {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function HistorySection({
   typeId,
   refreshKey,
@@ -168,7 +180,7 @@ function HistorySection({
   typeId: number;
   refreshKey: number;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [groups, setGroups] = useState<TypeHistoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -188,16 +200,18 @@ function HistorySection({
     void fetchHistory();
   }, [fetchHistory, refreshKey]);
 
+  const displayGroups = [...groups].reverse();
+
   return (
     <div className="history-section">
       <h3>{t("pages.typeDetails.history")}</h3>
       {loading && <div className="loading-placeholder" />}
-      {!loading && groups.length === 0 && (
+      {!loading && displayGroups.length === 0 && (
         <p className="empty-history">{t("pages.typeDetails.historyEmpty")}</p>
       )}
-      {!loading && groups.length > 0 && (
+      {!loading && displayGroups.length > 0 && (
         <ul className="history-list">
-          {groups.map((g, idx) => (
+          {displayGroups.map((g, idx) => (
             <li key={idx} className="history-item">
               <span className="history-transition">
                 {t(`stages.${g.from_stage}`)} → {t(`stages.${g.to_stage}`)}
@@ -205,8 +219,11 @@ function HistorySection({
               <span className="history-qty">
                 {t("pages.typeDetails.historyQty", { qty: g.qty })}
               </span>
-              <time className="history-time">
-                {new Date(g.timestamp).toLocaleString()}
+              <time
+                className="history-time"
+                dateTime={g.timestamp}
+              >
+                {formatHistoryTimestamp(g.timestamp, i18n.language)}
               </time>
             </li>
           ))}

@@ -2,6 +2,19 @@
 
 ## 2026-02-25
 
+### DB-003
+
+- Добавлена Alembic-миграция `backend/alembic/versions/0002_seed_stage_counts_on_type_insert.py`, которая гарантирует авто-сидирование `stage_counts` при создании записи в `miniature_types`.
+- Реализован dialect-aware подход в миграции:
+  - для PostgreSQL: функция-триггер `seed_stage_counts_for_new_type()` и триггер `trg_seed_stage_counts_after_type_insert`;
+  - для SQLite (тестовый контур): `AFTER INSERT` trigger с эквивалентной логикой.
+- Расширен интеграционный тест `backend/tests/test_migrations.py`:
+  - добавлена проверка, что после вставки нового типа автоматически появляются записи по всем 5 стадиям (`IN_BOX`, `BUILDING`, `PRIMING`, `PAINTING`, `DONE`) со значением `0`.
+- В `BACKLOG.md` задача `DB-003` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0010-stage-counts-seeding-db-003.md`;
+  - `tasks/DB-003.md`.
+
 ### DB-002
 
 - Подтверждён bootstrap Alembic в backend: используются `backend/alembic.ini`, `backend/alembic/env.py` и стартовая ревизия `backend/alembic/versions/0001_init_schema_placeholder.py`.

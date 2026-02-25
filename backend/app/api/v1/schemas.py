@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.domain.stages import StageCode
 
@@ -104,6 +104,15 @@ class ImportTypeItem(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     stage_counts: list[ImportStageCount]
     history: list[ImportHistoryItem]
+
+    @model_validator(mode="after")
+    def validate_stage_counts_cover_all_stages(self) -> "ImportTypeItem":
+        stage_values = [stage_count.stage for stage_count in self.stage_counts]
+        if len(stage_values) != len(StageCode):
+            raise ValueError("stage_counts must contain every stage exactly once")
+        if len(set(stage_values)) != len(StageCode):
+            raise ValueError("stage_counts must contain unique stages")
+        return self
 
 
 class ImportRequest(BaseModel):

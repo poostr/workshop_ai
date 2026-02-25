@@ -2,6 +2,30 @@
 
 ## 2026-02-25
 
+### CLEAN-003
+
+- Проведена приборка backend-слоя для этапа C в `backend/app/api/v1/router.py`:
+  - устранено дублирование маппинга стадий в поля ответа (`TypeStageCounts`) через единый словарь `STAGE_COUNT_FIELD_BY_STAGE`;
+  - сборка `TypeStageCounts` централизована в helper `_stage_counts_model_from_dict`, чтобы убрать ручное заполнение каждого поля в нескольких местах;
+  - упрощена import-логика `_build_stage_delta_map` после централизации валидации в схемах.
+- Централизована валидация импортируемых stage counts в `backend/app/api/v1/schemas.py`:
+  - для `ImportTypeItem` добавлен `model_validator`, который требует наличие всех системных стадий ровно по одному разу;
+  - тем самым проверка полноты/уникальности стадий перенесена из роутера в слой схем.
+- Усилен security-профиль локального окружения:
+  - в `backend/app/main.py` включен `CORSMiddleware` с явным allowlist локальных origin;
+  - в `backend/app/config.py` добавлена конфигурация `cors_allowed_origins` с безопасными значениями по умолчанию для localhost;
+  - в `ops/nginx/default.conf` добавлен безопасный redirect `/api -> /api/`, proxy ограничен префиксом `^~ /api/`, отключен `proxy_redirect`.
+- Добавлены проверки в тестах:
+  - `backend/tests/test_app.py` — позитивный/негативный CORS-кейсы для разрешенного и неразрешенного origin;
+  - `backend/tests/test_import_api.py` — отклонение импорта при неполном наборе `stage_counts`.
+- Полный backend quality gate пройден успешно:
+  - `make backend-lint`
+  - `make backend-test` (25 passed).
+- В `BACKLOG.md` задача `CLEAN-003` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0020-clean-stage-c-validation-cors-proxy.md`;
+  - `tasks/CLEAN-003.md`.
+
 ### API-008
 
 - Реализован endpoint `POST /api/v1/import` в `backend/app/api/v1/router.py`:

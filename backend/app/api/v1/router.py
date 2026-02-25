@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Final
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from pydantic import ValidationError
@@ -34,6 +35,14 @@ from app.domain.stages import StageCode, is_forward_transition
 
 router = APIRouter()
 
+STAGE_COUNT_FIELD_BY_STAGE: Final[dict[StageCode, str]] = {
+    StageCode.IN_BOX: "in_box",
+    StageCode.BUILDING: "building",
+    StageCode.PRIMING: "priming",
+    StageCode.PAINTING: "painting",
+    StageCode.DONE: "done",
+}
+
 
 @router.get("/status", tags=["system"], response_model=ApiStatusResponse)
 def api_status() -> ApiStatusResponse:
@@ -44,32 +53,27 @@ def _base_counts() -> dict[str, int]:
     return {stage.value: 0 for stage in StageCode}
 
 
+def _stage_counts_model_from_dict(counts_by_stage: dict[str, int]) -> TypeStageCounts:
+    return TypeStageCounts(
+        **{
+            field_name: counts_by_stage[stage.value]
+            for stage, field_name in STAGE_COUNT_FIELD_BY_STAGE.items()
+        }
+    )
+
+
 def _build_type_item(type_id: int, name: str) -> TypeListItem:
-    zero_counts = _base_counts()
     return TypeListItem(
         id=type_id,
         name=name,
-        counts=TypeStageCounts(
-            in_box=zero_counts[StageCode.IN_BOX.value],
-            building=zero_counts[StageCode.BUILDING.value],
-            priming=zero_counts[StageCode.PRIMING.value],
-            painting=zero_counts[StageCode.PAINTING.value],
-            done=zero_counts[StageCode.DONE.value],
-        ),
+        counts=_stage_counts_model_from_dict(_base_counts()),
     )
 
 
 def _apply_stage_count(item: TypeListItem, stage_name: str, count: int) -> None:
-    if stage_name == StageCode.IN_BOX.value:
-        item.counts.in_box = count
-    elif stage_name == StageCode.BUILDING.value:
-        item.counts.building = count
-    elif stage_name == StageCode.PRIMING.value:
-        item.counts.priming = count
-    elif stage_name == StageCode.PAINTING.value:
-        item.counts.painting = count
-    elif stage_name == StageCode.DONE.value:
-        item.counts.done = count
+    field_name = STAGE_COUNT_FIELD_BY_STAGE.get(StageCode(stage_name))
+    if field_name is not None:
+        setattr(item.counts, field_name, count)
 
 
 def _iter_type_stage_rows(db_session: Session) -> Iterator[tuple[int, str, str | None, int | None]]:
@@ -234,24 +238,7 @@ def _parse_import_payload(raw_payload: dict[str, object]) -> ImportRequest:
 
 
 def _build_stage_delta_map(item: ImportTypeItem) -> dict[str, int]:
-    stage_delta_by_name: dict[str, int] = {}
-    for stage_count in item.stage_counts:
-        stage_name = stage_count.stage.value
-        if stage_name in stage_delta_by_name:
-            raise ApiContractError(
-                code=ErrorCode.ERR_INVALID_IMPORT_FORMAT,
-                message="Import payload is invalid.",
-            )
-        stage_delta_by_name[stage_name] = stage_count.count
-
-    expected_stages = {stage.value for stage in StageCode}
-    if set(stage_delta_by_name.keys()) != expected_stages:
-        raise ApiContractError(
-            code=ErrorCode.ERR_INVALID_IMPORT_FORMAT,
-            message="Import payload is invalid.",
-        )
-
-    return stage_delta_by_name
+    return {stage_count.stage.value: stage_count.count for stage_count in item.stage_counts}
 
 
 def _resolve_type_for_import(db_session: Session, type_name: str) -> MiniatureType:

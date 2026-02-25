@@ -193,7 +193,7 @@ Task DOD
 - При ошибке БД остаётся неизменной.
 - Возвращается понятный код ошибки (например, `ERR_INVALID_IMPORT_FORMAT`).
 
-- [ ] CLEAN-003 Приборка этапа C + security check
+- [x] CLEAN-003 Приборка этапа C + security check
 Task Context
 - После API легко разъезжаются контракты и валидации.
 Task DOD

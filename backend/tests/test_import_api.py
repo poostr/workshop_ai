@@ -230,3 +230,36 @@ def test_post_import_rolls_back_all_changes_on_invalid_payload(tmp_path: Path, m
     assert in_box_count == 10
     assert broken_type_count == 0
     assert history_count == 0
+
+
+def test_post_import_rejects_missing_stage_counts(tmp_path: Path, monkeypatch) -> None:
+    db_file = tmp_path / "import_missing_stage.db"
+    _migrate_sqlite_database(db_file, monkeypatch)
+    client = TestClient(create_app())
+
+    try:
+        response = client.post(
+            "/api/v1/import",
+            json={
+                "types": [
+                    {
+                        "name": "Gamma",
+                        "stage_counts": [
+                            {"stage": "IN_BOX", "count": 1},
+                            {"stage": "BUILDING", "count": 0},
+                            {"stage": "PRIMING", "count": 0},
+                            {"stage": "PAINTING", "count": 0},
+                        ],
+                        "history": [],
+                    }
+                ]
+            },
+        )
+    finally:
+        get_settings.cache_clear()
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "code": "ERR_INVALID_IMPORT_FORMAT",
+        "message": "Import payload is invalid.",
+    }

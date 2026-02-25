@@ -147,7 +147,7 @@ Task DOD
 - При дубликате возвращается 400 с `ERR_DUPLICATE_TYPE_NAME`.
 - При успехе создаются stage_counts (см. DB-003).
 
-- [ ] API-004 `GET /api/v1/types/{id}` детали типа
+- [x] API-004 `GET /api/v1/types/{id}` детали типа
 Task Context
 - Нужны данные карточки: имя + counts.
 Task DOD

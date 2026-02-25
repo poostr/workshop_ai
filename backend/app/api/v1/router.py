@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -29,6 +29,34 @@ def api_status() -> ApiStatusResponse:
 
 def _base_counts() -> dict[str, int]:
     return {stage.value: 0 for stage in StageCode}
+
+
+def _build_type_item(type_id: int, name: str) -> TypeListItem:
+    zero_counts = _base_counts()
+    return TypeListItem(
+        id=type_id,
+        name=name,
+        counts=TypeStageCounts(
+            in_box=zero_counts[StageCode.IN_BOX.value],
+            building=zero_counts[StageCode.BUILDING.value],
+            priming=zero_counts[StageCode.PRIMING.value],
+            painting=zero_counts[StageCode.PAINTING.value],
+            done=zero_counts[StageCode.DONE.value],
+        ),
+    )
+
+
+def _apply_stage_count(item: TypeListItem, stage_name: str, count: int) -> None:
+    if stage_name == StageCode.IN_BOX.value:
+        item.counts.in_box = count
+    elif stage_name == StageCode.BUILDING.value:
+        item.counts.building = count
+    elif stage_name == StageCode.PRIMING.value:
+        item.counts.priming = count
+    elif stage_name == StageCode.PAINTING.value:
+        item.counts.painting = count
+    elif stage_name == StageCode.DONE.value:
+        item.counts.done = count
 
 
 def _iter_type_stage_rows(db_session: Session) -> Iterator[tuple[int, str, str | None, int | None]]:
@@ -77,18 +105,33 @@ def create_type(
         raise
 
     db_session.refresh(created_type)
-    zero_counts = _base_counts()
-    return TypeListItem(
-        id=created_type.id,
-        name=created_type.name,
-        counts=TypeStageCounts(
-            in_box=zero_counts[StageCode.IN_BOX.value],
-            building=zero_counts[StageCode.BUILDING.value],
-            priming=zero_counts[StageCode.PRIMING.value],
-            painting=zero_counts[StageCode.PAINTING.value],
-            done=zero_counts[StageCode.DONE.value],
-        ),
+    return _build_type_item(type_id=created_type.id, name=created_type.name)
+
+
+@router.get("/types/{type_id}", tags=["types"], response_model=TypeListItem)
+def get_type(type_id: int, db_session: Session = Depends(get_db_session)) -> TypeListItem:
+    stmt: Select[tuple[int, str, str | None, int | None]] = (
+        select(
+            MiniatureType.id,
+            MiniatureType.name,
+            StageCount.stage_name,
+            StageCount.count,
+        )
+        .select_from(MiniatureType)
+        .outerjoin(StageCount, StageCount.type_id == MiniatureType.id)
+        .where(MiniatureType.id == type_id)
     )
+    rows = db_session.execute(stmt).all()
+    if not rows:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found.")
+
+    first_row = rows[0]
+    item = _build_type_item(type_id=first_row[0], name=first_row[1])
+    for _, _, stage_name, count in rows:
+        if stage_name is None or count is None:
+            continue
+        _apply_stage_count(item, stage_name, count)
+    return item
 
 
 @router.get("/types", tags=["types"], response_model=TypeListResponse)
@@ -97,31 +140,11 @@ def list_types(db_session: Session = Depends(get_db_session)) -> TypeListRespons
 
     for type_id, name, stage_name, count in _iter_type_stage_rows(db_session):
         if type_id not in items_by_type_id:
-            zero_counts = _base_counts()
-            items_by_type_id[type_id] = TypeListItem(
-                id=type_id,
-                name=name,
-                counts=TypeStageCounts(
-                    in_box=zero_counts[StageCode.IN_BOX.value],
-                    building=zero_counts[StageCode.BUILDING.value],
-                    priming=zero_counts[StageCode.PRIMING.value],
-                    painting=zero_counts[StageCode.PAINTING.value],
-                    done=zero_counts[StageCode.DONE.value],
-                ),
-            )
+            items_by_type_id[type_id] = _build_type_item(type_id=type_id, name=name)
 
         if stage_name is None or count is None:
             continue
 
-        if stage_name == StageCode.IN_BOX.value:
-            items_by_type_id[type_id].counts.in_box = count
-        elif stage_name == StageCode.BUILDING.value:
-            items_by_type_id[type_id].counts.building = count
-        elif stage_name == StageCode.PRIMING.value:
-            items_by_type_id[type_id].counts.priming = count
-        elif stage_name == StageCode.PAINTING.value:
-            items_by_type_id[type_id].counts.painting = count
-        elif stage_name == StageCode.DONE.value:
-            items_by_type_id[type_id].counts.done = count
+        _apply_stage_count(items_by_type_id[type_id], stage_name, count)
 
     return TypeListResponse(items=list(items_by_type_id.values()))

@@ -2,6 +2,23 @@
 
 ## 2026-02-25
 
+### API-004
+
+- Реализован endpoint `GET /api/v1/types/{id}` в `backend/app/api/v1/router.py`:
+  - добавлена выборка карточки типа по `id` с `LEFT JOIN` к `stage_counts`;
+  - ответ возвращается в формате `TypeListItem` с гарантированным набором всех стадий;
+  - при отсутствии типа возвращается `404` с сообщением `Type not found.`
+- Выполнен рефакторинг сборки counts в `backend/app/api/v1/router.py`:
+  - добавлены переиспользуемые helper-функции `_build_type_item` и `_apply_stage_count`;
+  - устранено дублирование логики инициализации/заполнения стадий между `GET /types`, `GET /types/{id}` и `POST /types`.
+- Добавлены интеграционные тесты `backend/tests/test_type_details_api.py`:
+  - успешное получение карточки типа с заполненными и нулевыми стадиями;
+  - корректный `404`-ответ для несуществующего типа.
+- В `BACKLOG.md` задача `API-004` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0015-type-details-endpoint-api-004.md`;
+  - `tasks/API-004.md`.
+
 ### API-003
 
 - Реализован endpoint `POST /api/v1/types` в `backend/app/api/v1/router.py`:

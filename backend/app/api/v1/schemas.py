@@ -58,3 +58,25 @@ class TypeHistoryGroup(BaseModel):
 
 class TypeHistoryResponse(BaseModel):
     items: list[TypeHistoryGroup]
+
+
+class ExportStageCount(BaseModel):
+    stage: StageCode
+    count: int
+
+
+class ExportHistoryItem(BaseModel):
+    from_stage: StageCode
+    to_stage: StageCode
+    qty: int
+    created_at: datetime
+
+
+class ExportTypeItem(BaseModel):
+    name: str
+    stage_counts: list[ExportStageCount]
+    history: list[ExportHistoryItem]
+
+
+class ExportResponse(BaseModel):
+    types: list[ExportTypeItem]

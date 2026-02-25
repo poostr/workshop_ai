@@ -2,6 +2,22 @@
 
 ## 2026-02-25
 
+### API-007
+
+- Реализован endpoint `GET /api/v1/export` в `backend/app/api/v1/router.py`:
+  - добавлена выгрузка полного состояния по всем типам с детерминированной сортировкой по имени типа (`name ASC`);
+  - в экспорт включены текущие counts по всем системным стадиям и полная сырая история перемещений;
+  - история в рамках каждого типа отдается в стабильном порядке (`created_at ASC`, затем `id ASC`).
+- Расширены API-схемы в `backend/app/api/v1/schemas.py`:
+  - добавлены модели экспорта `ExportStageCount`, `ExportHistoryItem`, `ExportTypeItem`, `ExportResponse`.
+- Добавлены интеграционные тесты `backend/tests/test_export_api.py`:
+  - проверка пустой БД (`types: []`);
+  - проверка выгрузки типов, stage_counts и истории в одном ответе.
+- В `BACKLOG.md` задача `API-007` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0018-export-endpoint-api-007.md`;
+  - `tasks/API-007.md`.
+
 ### API-006
 
 - Реализован endpoint `GET /api/v1/types/{id}/history` в `backend/app/api/v1/router.py`:

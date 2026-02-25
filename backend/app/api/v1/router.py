@@ -12,6 +12,10 @@ from sqlalchemy.orm import Session
 from app.api.v1.errors import ApiContractError, ErrorCode
 from app.api.v1.schemas import (
     ApiStatusResponse,
+    ExportHistoryItem,
+    ExportResponse,
+    ExportStageCount,
+    ExportTypeItem,
     TypeCreateRequest,
     TypeHistoryGroup,
     TypeHistoryResponse,
@@ -185,6 +189,36 @@ def _group_history_rows(rows: Iterator[_HistoryRow]) -> list[TypeHistoryGroup]:
     return groups
 
 
+def _iter_export_rows(db_session: Session) -> Iterator[tuple[int, str, str, int]]:
+    stmt: Select[tuple[int, str, str, int]] = (
+        select(
+            MiniatureType.id,
+            MiniatureType.name,
+            StageCount.stage_name,
+            StageCount.count,
+        )
+        .select_from(MiniatureType)
+        .join(StageCount, StageCount.type_id == MiniatureType.id)
+        .order_by(MiniatureType.name.asc(), MiniatureType.id.asc())
+    )
+    rows = db_session.execute(stmt).all()
+    return ((row[0], row[1], row[2], row[3]) for row in rows)
+
+
+def _iter_export_history_rows(
+    db_session: Session,
+) -> Iterator[tuple[int, str, str, int, datetime]]:
+    stmt: Select[tuple[int, str, str, int, datetime]] = select(
+        HistoryLog.type_id,
+        HistoryLog.from_stage,
+        HistoryLog.to_stage,
+        HistoryLog.qty,
+        HistoryLog.created_at,
+    ).order_by(HistoryLog.type_id.asc(), HistoryLog.created_at.asc(), HistoryLog.id.asc())
+    rows = db_session.execute(stmt).all()
+    return ((row[0], row[1], row[2], row[3], row[4]) for row in rows)
+
+
 @router.post(
     "/types",
     tags=["types"],
@@ -305,3 +339,44 @@ def get_type_history(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found.")
 
     return TypeHistoryResponse(items=_group_history_rows(_iter_history_rows(db_session, type_id)))
+
+
+@router.get("/export", tags=["import-export"], response_model=ExportResponse)
+def export_state(db_session: Session = Depends(get_db_session)) -> ExportResponse:
+    type_names: dict[int, str] = {}
+    stage_counts_by_type_id: dict[int, dict[str, int]] = {}
+    history_by_type_id: dict[int, list[ExportHistoryItem]] = {}
+
+    for type_id, name, stage_name, count in _iter_export_rows(db_session):
+        type_names[type_id] = name
+        if type_id not in stage_counts_by_type_id:
+            stage_counts_by_type_id[type_id] = _base_counts()
+        stage_counts_by_type_id[type_id][stage_name] = count
+
+    for type_id, from_stage, to_stage, qty, created_at in _iter_export_history_rows(db_session):
+        if type_id not in history_by_type_id:
+            history_by_type_id[type_id] = []
+        history_by_type_id[type_id].append(
+            ExportHistoryItem(
+                from_stage=StageCode(from_stage),
+                to_stage=StageCode(to_stage),
+                qty=qty,
+                created_at=created_at,
+            )
+        )
+
+    export_items: list[ExportTypeItem] = []
+    for type_id, name in type_names.items():
+        stage_counts = stage_counts_by_type_id.get(type_id, _base_counts())
+        export_items.append(
+            ExportTypeItem(
+                name=name,
+                stage_counts=[
+                    ExportStageCount(stage=stage, count=stage_counts[stage.value])
+                    for stage in StageCode
+                ],
+                history=history_by_type_id.get(type_id, []),
+            )
+        )
+
+    return ExportResponse(types=export_items)

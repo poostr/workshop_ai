@@ -2,6 +2,28 @@
 
 ## 2026-02-25
 
+### API-005
+
+- Реализован endpoint `POST /api/v1/types/{id}/move` в `backend/app/api/v1/router.py`:
+  - добавлена проверка направления перехода строго вперёд по pipeline с ошибкой `ERR_INVALID_STAGE_TRANSITION`;
+  - добавлена атомарная обработка перемещения со строковой блокировкой `stage_counts` через `SELECT ... FOR UPDATE`;
+  - при недостатке в источнике возвращается `400` с кодом `ERR_INSUFFICIENT_QTY`;
+  - при успешном перемещении обновляются оба счётчика, создаётся запись в `history_logs`, возвращаются актуальные counts.
+- Выполнен рефакторинг получения карточки типа:
+  - добавлены helper-функции `_iter_type_rows_by_id` и `_build_type_item_by_id` в `backend/app/api/v1/router.py`;
+  - `GET /api/v1/types/{id}` переведён на переиспользование новой логики, чтобы убрать дублирование.
+- В доменной модели стадий `backend/app/domain/stages.py` добавлены:
+  - индекс порядка стадий `STAGE_INDEX`;
+  - helper `is_forward_transition` как единая проверка допустимого направления перехода.
+- Добавлены интеграционные тесты `backend/tests/test_type_move_api.py`:
+  - успешное перемещение с проверкой итоговых counts и записи в `history_logs`;
+  - ошибка `ERR_INSUFFICIENT_QTY` при нехватке количества;
+  - ошибка `ERR_INVALID_STAGE_TRANSITION` для перехода назад.
+- В `BACKLOG.md` задача `API-005` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0016-atomic-forward-move-endpoint-api-005.md`;
+  - `tasks/API-005.md`.
+
 ### API-004
 
 - Реализован endpoint `GET /api/v1/types/{id}` в `backend/app/api/v1/router.py`:

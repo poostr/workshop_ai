@@ -16,11 +16,11 @@ class ErrorResponse(BaseModel):
 
 
 class TypeMoveRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="forbid")
 
     from_stage: StageCode
     to_stage: StageCode
-    qty: int = Field(gt=0, le=1_000_000)
+    qty: int = Field(strict=True, gt=0, le=1_000_000)
 
 
 class TypeCreateRequest(BaseModel):

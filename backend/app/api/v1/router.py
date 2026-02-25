@@ -13,11 +13,12 @@ from app.api.v1.schemas import (
     TypeCreateRequest,
     TypeListItem,
     TypeListResponse,
+    TypeMoveRequest,
     TypeStageCounts,
 )
-from app.db.models import MiniatureType, StageCount
+from app.db.models import HistoryLog, MiniatureType, StageCount
 from app.db.session import get_db_session
-from app.domain.stages import StageCode
+from app.domain.stages import StageCode, is_forward_transition
 
 router = APIRouter()
 
@@ -75,6 +76,39 @@ def _iter_type_stage_rows(db_session: Session) -> Iterator[tuple[int, str, str |
     return ((row[0], row[1], row[2], row[3]) for row in rows)
 
 
+def _iter_type_rows_by_id(
+    db_session: Session, type_id: int
+) -> Iterator[tuple[int, str, str | None, int | None]]:
+    stmt: Select[tuple[int, str, str | None, int | None]] = (
+        select(
+            MiniatureType.id,
+            MiniatureType.name,
+            StageCount.stage_name,
+            StageCount.count,
+        )
+        .select_from(MiniatureType)
+        .outerjoin(StageCount, StageCount.type_id == MiniatureType.id)
+        .where(MiniatureType.id == type_id)
+    )
+    rows = db_session.execute(stmt).all()
+    return ((row[0], row[1], row[2], row[3]) for row in rows)
+
+
+def _build_type_item_by_id(db_session: Session, type_id: int) -> TypeListItem | None:
+    rows = list(_iter_type_rows_by_id(db_session, type_id))
+    if not rows:
+        return None
+
+    first_row = rows[0]
+    item = _build_type_item(type_id=first_row[0], name=first_row[1])
+    for _, _, stage_name, count in rows:
+        if stage_name is None or count is None:
+            continue
+        _apply_stage_count(item, stage_name, count)
+
+    return item
+
+
 def _is_duplicate_type_name_error(error: IntegrityError) -> bool:
     lowered_error = str(error.orig).lower()
     return "uq_miniature_types_name" in lowered_error or "miniature_types.name" in lowered_error
@@ -110,27 +144,10 @@ def create_type(
 
 @router.get("/types/{type_id}", tags=["types"], response_model=TypeListItem)
 def get_type(type_id: int, db_session: Session = Depends(get_db_session)) -> TypeListItem:
-    stmt: Select[tuple[int, str, str | None, int | None]] = (
-        select(
-            MiniatureType.id,
-            MiniatureType.name,
-            StageCount.stage_name,
-            StageCount.count,
-        )
-        .select_from(MiniatureType)
-        .outerjoin(StageCount, StageCount.type_id == MiniatureType.id)
-        .where(MiniatureType.id == type_id)
-    )
-    rows = db_session.execute(stmt).all()
-    if not rows:
+    item = _build_type_item_by_id(db_session, type_id)
+    if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found.")
 
-    first_row = rows[0]
-    item = _build_type_item(type_id=first_row[0], name=first_row[1])
-    for _, _, stage_name, count in rows:
-        if stage_name is None or count is None:
-            continue
-        _apply_stage_count(item, stage_name, count)
     return item
 
 
@@ -148,3 +165,61 @@ def list_types(db_session: Session = Depends(get_db_session)) -> TypeListRespons
         _apply_stage_count(items_by_type_id[type_id], stage_name, count)
 
     return TypeListResponse(items=list(items_by_type_id.values()))
+
+
+@router.post("/types/{type_id}/move", tags=["types"], response_model=TypeListItem)
+def move_type(
+    type_id: int,
+    payload: TypeMoveRequest,
+    db_session: Session = Depends(get_db_session),
+) -> TypeListItem:
+    if not is_forward_transition(payload.from_stage, payload.to_stage):
+        raise ApiContractError(
+            code=ErrorCode.ERR_INVALID_STAGE_TRANSITION,
+            message="Transition must move forward in the pipeline.",
+        )
+
+    selected_type = db_session.get(MiniatureType, type_id)
+    if selected_type is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found.")
+
+    stage_rows = db_session.execute(
+        select(StageCount)
+        .where(
+            StageCount.type_id == type_id,
+            StageCount.stage_name.in_([payload.from_stage.value, payload.to_stage.value]),
+        )
+        .with_for_update()
+    ).scalars()
+    stage_rows_by_name = {row.stage_name: row for row in stage_rows}
+    source_stage = stage_rows_by_name.get(payload.from_stage.value)
+    destination_stage = stage_rows_by_name.get(payload.to_stage.value)
+
+    if source_stage is None or destination_stage is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Stage counts are not initialized for this type.",
+        )
+
+    if source_stage.count < payload.qty:
+        raise ApiContractError(
+            code=ErrorCode.ERR_INSUFFICIENT_QTY,
+            message="Requested quantity exceeds available items in source stage.",
+        )
+
+    source_stage.count -= payload.qty
+    destination_stage.count += payload.qty
+    db_session.add(
+        HistoryLog(
+            type_id=type_id,
+            from_stage=payload.from_stage.value,
+            to_stage=payload.to_stage.value,
+            qty=payload.qty,
+        )
+    )
+    db_session.commit()
+
+    item = _build_type_item_by_id(db_session, type_id)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found.")
+    return item

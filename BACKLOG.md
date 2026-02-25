@@ -153,7 +153,7 @@ Task Context
 Task DOD
 - Endpoint возвращает тип и counts для всех стадий.
 
-- [ ] API-005 `POST /api/v1/types/{id}/move` атомарное перемещение вперёд
+- [x] API-005 `POST /api/v1/types/{id}/move` атомарное перемещение вперёд
 Task Context
 - Критический путь: нельзя уйти в минус; только вперёд.
 - Транзакция + `SELECT ... FOR UPDATE` по источнику (пессимистическая блокировка).

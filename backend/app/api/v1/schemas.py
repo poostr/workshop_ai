@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.stages import StageCode
@@ -45,3 +47,14 @@ class TypeListItem(BaseModel):
 
 class TypeListResponse(BaseModel):
     items: list[TypeListItem]
+
+
+class TypeHistoryGroup(BaseModel):
+    from_stage: StageCode
+    to_stage: StageCode
+    qty: int
+    timestamp: datetime
+
+
+class TypeHistoryResponse(BaseModel):
+    items: list[TypeHistoryGroup]

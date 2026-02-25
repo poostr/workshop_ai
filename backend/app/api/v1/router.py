@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+from dataclasses import dataclass
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import Select, select
@@ -11,6 +13,8 @@ from app.api.v1.errors import ApiContractError, ErrorCode
 from app.api.v1.schemas import (
     ApiStatusResponse,
     TypeCreateRequest,
+    TypeHistoryGroup,
+    TypeHistoryResponse,
     TypeListItem,
     TypeListResponse,
     TypeMoveRequest,
@@ -112,6 +116,73 @@ def _build_type_item_by_id(db_session: Session, type_id: int) -> TypeListItem | 
 def _is_duplicate_type_name_error(error: IntegrityError) -> bool:
     lowered_error = str(error.orig).lower()
     return "uq_miniature_types_name" in lowered_error or "miniature_types.name" in lowered_error
+
+
+@dataclass
+class _HistoryRow:
+    from_stage: str
+    to_stage: str
+    qty: int
+    created_at: datetime
+
+
+def _iter_history_rows(db_session: Session, type_id: int) -> Iterator[_HistoryRow]:
+    stmt: Select[HistoryLog] = (
+        select(HistoryLog)
+        .where(HistoryLog.type_id == type_id)
+        .order_by(HistoryLog.created_at.asc(), HistoryLog.id.asc())
+    )
+    rows = db_session.execute(stmt).scalars().all()
+    return (
+        _HistoryRow(
+            from_stage=row.from_stage,
+            to_stage=row.to_stage,
+            qty=row.qty,
+            created_at=row.created_at,
+        )
+        for row in rows
+    )
+
+
+def _group_history_rows(rows: Iterator[_HistoryRow]) -> list[TypeHistoryGroup]:
+    groups: list[TypeHistoryGroup] = []
+    previous_row: _HistoryRow | None = None
+
+    for row in rows:
+        if not groups:
+            groups.append(
+                TypeHistoryGroup(
+                    from_stage=StageCode(row.from_stage),
+                    to_stage=StageCode(row.to_stage),
+                    qty=row.qty,
+                    timestamp=row.created_at,
+                )
+            )
+            previous_row = row
+            continue
+
+        assert previous_row is not None
+        seconds_since_previous_event = (row.created_at - previous_row.created_at).total_seconds()
+        is_same_transition = (
+            previous_row.from_stage == row.from_stage and previous_row.to_stage == row.to_stage
+        )
+
+        if is_same_transition and 0 <= seconds_since_previous_event <= 300:
+            groups[-1].qty += row.qty
+            previous_row = row
+            continue
+
+        groups.append(
+            TypeHistoryGroup(
+                from_stage=StageCode(row.from_stage),
+                to_stage=StageCode(row.to_stage),
+                qty=row.qty,
+                timestamp=row.created_at,
+            )
+        )
+        previous_row = row
+
+    return groups
 
 
 @router.post(
@@ -223,3 +294,14 @@ def move_type(
     if item is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found.")
     return item
+
+
+@router.get("/types/{type_id}/history", tags=["types"], response_model=TypeHistoryResponse)
+def get_type_history(
+    type_id: int, db_session: Session = Depends(get_db_session)
+) -> TypeHistoryResponse:
+    selected_type = db_session.get(MiniatureType, type_id)
+    if selected_type is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found.")
+
+    return TypeHistoryResponse(items=_group_history_rows(_iter_history_rows(db_session, type_id)))

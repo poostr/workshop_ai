@@ -7,7 +7,9 @@ export function AppLayout() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <h1>{t("app.title")}</h1>
+        <Link to="/" className="app-logo-link">
+          <h1>{t("app.title")}</h1>
+        </Link>
         <div
           className="lang-switcher"
           role="group"
@@ -29,11 +31,6 @@ export function AppLayout() {
           </button>
         </div>
       </header>
-
-      <nav className="app-nav">
-        <Link to="/">{t("nav.main")}</Link>
-        <Link to="/types/demo">{t("nav.typeDetails")}</Link>
-      </nav>
 
       <main>
         <Outlet />

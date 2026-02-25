@@ -205,7 +205,7 @@ Task DOD
 
 ## Этап D — Frontend SPA (React) + i18n + UX
 
-- [ ] FE-001 Каркас приложения: роутинг, layout, состояние, i18n
+- [x] FE-001 Каркас приложения: роутинг, layout, состояние, i18n
 Task Context
 - Страницы: Main (список типов), TypeDetails (counts + move), History (вкладка/секция).
 - RU/EN переключение «на лету» без потери состояния.

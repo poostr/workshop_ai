@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiClient, ApiClientError } from "../shared/api/client";
+import { apiClient } from "../shared/api/client";
+import { getLocalizedErrorMessage } from "../shared/api/errors";
 import type { TypeListItem } from "../shared/api/types";
 import { STAGES } from "../shared/api/types";
 
@@ -20,11 +21,7 @@ export function MainPage() {
       const data = await apiClient.listTypes();
       setTypes(data.items);
     } catch (err) {
-      if (err instanceof ApiClientError) {
-        setError(t(`errors.${err.code}`, { defaultValue: err.message }));
-      } else {
-        setError(t("errors.ERR_UNKNOWN"));
-      }
+      setError(getLocalizedErrorMessage(err, t));
     } finally {
       setLoading(false);
     }

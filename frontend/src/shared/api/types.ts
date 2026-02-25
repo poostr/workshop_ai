@@ -85,6 +85,28 @@ export interface ExportResponse {
   types: ExportTypeItem[];
 }
 
+export interface ImportStageCount {
+  stage: StageCode;
+  count: number;
+}
+
+export interface ImportHistoryItem {
+  from_stage: StageCode;
+  to_stage: StageCode;
+  qty: number;
+  created_at: string;
+}
+
+export interface ImportTypeItem {
+  name: string;
+  stage_counts: ImportStageCount[];
+  history: ImportHistoryItem[];
+}
+
+export interface ImportRequest {
+  types: ImportTypeItem[];
+}
+
 export interface ImportResponse {
   status: string;
 }

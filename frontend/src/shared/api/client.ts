@@ -1,6 +1,7 @@
 import type {
   ApiErrorResponse,
   ExportResponse,
+  ImportRequest,
   ImportResponse,
   TypeCreateRequest,
   TypeHistoryResponse,
@@ -59,7 +60,7 @@ export class ApiClient {
     return this.request<ExportResponse>("/export");
   }
 
-  public async importState(data: unknown): Promise<ImportResponse> {
+  public async importState(data: ImportRequest): Promise<ImportResponse> {
     return this.request<ImportResponse>("/import", {
       method: "POST",
       body: JSON.stringify(data),

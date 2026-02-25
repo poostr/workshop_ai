@@ -2,6 +2,28 @@
 
 ## 2026-02-25
 
+### FE-002
+
+- Добавлены типы для запроса импорта в `frontend/src/shared/api/types.ts`:
+  - `ImportStageCount`, `ImportHistoryItem`, `ImportTypeItem`, `ImportRequest` — зеркалят Pydantic-схемы backend.
+- Типизирован метод `importState` в `frontend/src/shared/api/client.ts`:
+  - сигнатура изменена с `data: unknown` на `data: ImportRequest`.
+- Создан централизованный хелпер `getLocalizedErrorMessage` в `frontend/src/shared/api/errors.ts`:
+  - инкапсулирует маппинг кодов ошибок API через i18n-словари;
+  - устраняет дублирование логики обработки ошибок в компонентах.
+- Рефакторинг трёх страниц (`MainPage`, `CreateTypePage`, `TypeDetailsPage`) для использования централизованного хелпера:
+  - убран прямой импорт `ApiClientError` из компонентов;
+  - обработка ошибок сведена к однострочному вызову `getLocalizedErrorMessage(err, t)`.
+- Полный frontend quality gate пройден успешно:
+  - `tsc --noEmit` (0 ошибок);
+  - `eslint .` (0 ошибок);
+  - `vite build` (dist/ собран).
+- Backend тесты: 25 passed.
+- В `BACKLOG.md` задача `FE-002` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0022-typed-api-client-error-mapping-fe-002.md`;
+  - `tasks/FE-002.md`.
+
 ### FE-001
 
 - Расширены i18n-словари (`ru.ts`, `en.ts`) до полного набора ключей:

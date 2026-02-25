@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiClient, ApiClientError } from "../shared/api/client";
+import { apiClient } from "../shared/api/client";
+import { getLocalizedErrorMessage } from "../shared/api/errors";
 
 export function CreateTypePage() {
   const { t } = useTranslation();
@@ -22,11 +23,7 @@ export function CreateTypePage() {
       const created = await apiClient.createType({ name: trimmed });
       navigate(`/types/${created.id}`);
     } catch (err) {
-      if (err instanceof ApiClientError) {
-        setError(t(`errors.${err.code}`, { defaultValue: err.message }));
-      } else {
-        setError(t("errors.ERR_UNKNOWN"));
-      }
+      setError(getLocalizedErrorMessage(err, t));
     } finally {
       setSubmitting(false);
     }

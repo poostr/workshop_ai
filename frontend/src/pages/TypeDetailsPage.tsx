@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
-import { apiClient, ApiClientError } from "../shared/api/client";
+import { apiClient } from "../shared/api/client";
+import { getLocalizedErrorMessage } from "../shared/api/errors";
 import type {
   TypeListItem,
   TypeHistoryGroup,
@@ -77,11 +78,7 @@ function MoveSection({
       });
       onMoved();
     } catch (err) {
-      if (err instanceof ApiClientError) {
-        setMoveError(t(`errors.${err.code}`, { defaultValue: err.message }));
-      } else {
-        setMoveError(t("errors.ERR_UNKNOWN"));
-      }
+      setMoveError(getLocalizedErrorMessage(err, t));
     } finally {
       setSubmitting(false);
     }

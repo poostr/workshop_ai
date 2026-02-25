@@ -29,6 +29,7 @@ export const en = {
       addType: "Add type",
       empty: "No types yet.",
       emptyCta: "Add first type",
+      emptySearch: "No results found.",
       total: "Total",
     },
     typeDetails: {

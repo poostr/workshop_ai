@@ -75,7 +75,7 @@ export function MainPage() {
       )}
 
       {!loading && !error && filtered.length === 0 && types.length > 0 && (
-        <p className="empty-search">{t("pages.main.empty")}</p>
+        <p className="empty-search">{t("pages.main.emptySearch")}</p>
       )}
 
       {!loading && filtered.length > 0 && (

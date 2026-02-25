@@ -29,6 +29,7 @@ export const ru = {
       addType: "Добавить тип",
       empty: "Типов пока нет.",
       emptyCta: "Добавить первый тип",
+      emptySearch: "Ничего не найдено.",
       total: "Всего",
     },
     typeDetails: {

@@ -21,3 +21,21 @@ class TypeMoveRequest(BaseModel):
     from_stage: StageCode
     to_stage: StageCode
     qty: int = Field(gt=0, le=1_000_000)
+
+
+class TypeStageCounts(BaseModel):
+    in_box: int
+    building: int
+    priming: int
+    painting: int
+    done: int
+
+
+class TypeListItem(BaseModel):
+    id: int
+    name: str
+    counts: TypeStageCounts
+
+
+class TypeListResponse(BaseModel):
+    items: list[TypeListItem]

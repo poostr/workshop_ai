@@ -2,6 +2,26 @@
 
 ## 2026-02-25
 
+### API-002
+
+- Реализован endpoint `GET /api/v1/types` в `backend/app/api/v1/router.py`:
+  - выборка типов выполняется с `LEFT JOIN` к `stage_counts`;
+  - результат сортируется по `name ASC` (с дополнительной стабилизацией по `id ASC`);
+  - ответ агрегирует количества по всем стадиям и гарантирует наличие всех 5 стадий в каждом элементе.
+- Расширены API-схемы в `backend/app/api/v1/schemas.py`:
+  - добавлены `TypeStageCounts`, `TypeListItem`, `TypeListResponse`.
+- Добавлена инфраструктура DB-сессий `backend/app/db/session.py`:
+  - DI-зависимость `get_db_session` для endpoint'ов;
+  - lazy/cached фабрика сессий на основе `DATABASE_URL`.
+- Добавлены интеграционные тесты `backend/tests/test_types_list_api.py`:
+  - пустая БД возвращает `{"items": []}`;
+  - выдача содержит все стадии в `counts` и отсортирована по имени.
+- В `BACKLOG.md` задача `API-002` помечена выполненной.
+- В `BACKLOG.md` добавлена задача `DOCS-002` (создание отсутствующего `AGENTS.md` как верхнего источника проектных инвариантов).
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0013-types-list-endpoint-api-002.md`;
+  - `tasks/API-002.md`.
+
 ### API-001
 
 - Реализован базовый контракт ошибок API в `backend/app/api/v1/errors.py`:

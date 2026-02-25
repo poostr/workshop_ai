@@ -2,6 +2,22 @@
 
 ## 2026-02-25
 
+### CLEAN-002
+
+- Централизован источник стадий в data-layer:
+  - добавлен `STAGES_SQL_LIST` в `backend/app/domain/stages.py`;
+  - SQLAlchemy-модели (`backend/app/db/models.py`) и миграция `backend/alembic/versions/0001_init_schema_placeholder.py` используют доменную константу вместо локальных строковых списков.
+- Убрано дублирование стадий в миграции `backend/alembic/versions/0002_seed_stage_counts_on_type_insert.py`:
+  - seed SQL для триггеров теперь генерируется из `STAGES`.
+- Актуализирована индексация под целевой read-path истории:
+  - удалены избыточные одиночные индексы по `stage_counts.type_id` и `history_logs.type_id`;
+  - добавлен составной индекс `ix_history_logs_type_id_created_at`.
+- Обновлён `backend/tests/test_migrations.py`: ожидания по стадиям формируются из доменной константы `STAGES`.
+- В `BACKLOG.md` задача `CLEAN-002` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0011-clean-stage-b-stage-constants-and-indexes.md`;
+  - `tasks/CLEAN-002.md`.
+
 ### DB-003
 
 - Добавлена Alembic-миграция `backend/alembic/versions/0002_seed_stage_counts_on_type_insert.py`, которая гарантирует авто-сидирование `stage_counts` при создании записи в `miniature_types`.

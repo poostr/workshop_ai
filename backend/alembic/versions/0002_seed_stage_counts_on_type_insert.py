@@ -11,6 +11,8 @@ from collections.abc import Sequence
 
 from alembic import op
 
+from app.domain.stages import STAGES
+
 # revision identifiers, used by Alembic.
 revision: str = "0002_seed_stage_counts_on_type_insert"
 down_revision: str | None = "0001_init_schema_placeholder"
@@ -21,7 +23,14 @@ _TRIGGER_NAME = "trg_seed_stage_counts_after_type_insert"
 _FUNCTION_NAME = "seed_stage_counts_for_new_type"
 
 
+def _render_seed_values_sql(new_id_reference: str) -> str:
+    return ",\n                ".join(
+        f"({new_id_reference}, '{stage}', 0)" for stage in STAGES
+    )
+
+
 def _create_sqlite_trigger() -> None:
+    seed_values_sql = _render_seed_values_sql("NEW.id")
     op.execute(
         f"""
         CREATE TRIGGER {_TRIGGER_NAME}
@@ -30,17 +39,14 @@ def _create_sqlite_trigger() -> None:
         BEGIN
             INSERT INTO stage_counts (type_id, stage_name, count)
             VALUES
-                (NEW.id, 'IN_BOX', 0),
-                (NEW.id, 'BUILDING', 0),
-                (NEW.id, 'PRIMING', 0),
-                (NEW.id, 'PAINTING', 0),
-                (NEW.id, 'DONE', 0);
+                {seed_values_sql};
         END;
         """
     )
 
 
 def _create_postgresql_trigger() -> None:
+    seed_values_sql = _render_seed_values_sql("NEW.id")
     op.execute(
         f"""
         CREATE OR REPLACE FUNCTION {_FUNCTION_NAME}()
@@ -49,11 +55,7 @@ def _create_postgresql_trigger() -> None:
         BEGIN
             INSERT INTO stage_counts (type_id, stage_name, count)
             VALUES
-                (NEW.id, 'IN_BOX', 0),
-                (NEW.id, 'BUILDING', 0),
-                (NEW.id, 'PRIMING', 0),
-                (NEW.id, 'PAINTING', 0),
-                (NEW.id, 'DONE', 0);
+                {seed_values_sql};
 
             RETURN NEW;
         END;

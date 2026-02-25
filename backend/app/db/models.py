@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     UniqueConstraint,
@@ -14,9 +15,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
-from app.domain.stages import STAGES
-
-_STAGE_SQL_LIST = ", ".join(f"'{stage}'" for stage in STAGES)
+from app.domain.stages import STAGES_SQL_LIST
 
 
 class MiniatureType(Base):
@@ -33,7 +32,7 @@ class StageCount(Base):
         UniqueConstraint("type_id", "stage_name", name="uq_stage_counts_type_stage"),
         CheckConstraint("count >= 0", name="ck_stage_counts_count_non_negative"),
         CheckConstraint(
-            f"stage_name IN ({_STAGE_SQL_LIST})",
+            f"stage_name IN ({STAGES_SQL_LIST})",
             name="ck_stage_counts_stage_name_valid",
         ),
     )
@@ -42,7 +41,6 @@ class StageCount(Base):
     type_id: Mapped[int] = mapped_column(
         ForeignKey("miniature_types.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     stage_name: Mapped[str] = mapped_column(String(32), nullable=False)
     count: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
@@ -51,10 +49,11 @@ class StageCount(Base):
 class HistoryLog(Base):
     __tablename__ = "history_logs"
     __table_args__ = (
+        Index("ix_history_logs_type_id_created_at", "type_id", "created_at"),
         CheckConstraint(
-            f"from_stage IN ({_STAGE_SQL_LIST})", name="ck_history_logs_from_stage_valid"
+            f"from_stage IN ({STAGES_SQL_LIST})", name="ck_history_logs_from_stage_valid"
         ),
-        CheckConstraint(f"to_stage IN ({_STAGE_SQL_LIST})", name="ck_history_logs_to_stage_valid"),
+        CheckConstraint(f"to_stage IN ({STAGES_SQL_LIST})", name="ck_history_logs_to_stage_valid"),
         CheckConstraint("qty > 0", name="ck_history_logs_qty_positive"),
     )
 
@@ -62,7 +61,6 @@ class HistoryLog(Base):
     type_id: Mapped[int] = mapped_column(
         ForeignKey("miniature_types.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
     )
     from_stage: Mapped[str] = mapped_column(String(32), nullable=False)
     to_stage: Mapped[str] = mapped_column(String(32), nullable=False)

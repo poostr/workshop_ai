@@ -7,6 +7,7 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 from app.config import get_settings
+from app.domain.stages import STAGES
 
 
 def test_alembic_upgrade_head_creates_schema(tmp_path: Path, monkeypatch) -> None:
@@ -66,10 +67,4 @@ def test_type_insert_seeds_all_stage_counts(tmp_path: Path, monkeypatch) -> None
 
         stage_counts = {row["stage_name"]: row["count"] for row in rows}
 
-    assert stage_counts == {
-        "IN_BOX": 0,
-        "BUILDING": 0,
-        "PRIMING": 0,
-        "PAINTING": 0,
-        "DONE": 0,
-    }
+    assert stage_counts == {stage: 0 for stage in STAGES}

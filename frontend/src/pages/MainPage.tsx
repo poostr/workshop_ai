@@ -6,6 +6,7 @@ import { apiClient } from "../shared/api/client";
 import { getLocalizedErrorMessage } from "../shared/api/errors";
 import type { TypeListItem } from "../shared/api/types";
 import { STAGES } from "../shared/api/types";
+import { CreateTypeModal } from "../components/CreateTypeModal";
 
 export function MainPage() {
   const { t } = useTranslation();
@@ -13,6 +14,7 @@ export function MainPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const fetchTypes = useCallback(async () => {
     try {
@@ -31,6 +33,11 @@ export function MainPage() {
     void fetchTypes();
   }, [fetchTypes]);
 
+  const handleTypeCreated = () => {
+    setModalOpen(false);
+    void fetchTypes();
+  };
+
   const filtered = types.filter((item) =>
     item.name.toLowerCase().includes(search.toLowerCase()),
   );
@@ -46,9 +53,13 @@ export function MainPage() {
     <section className="page-main">
       <div className="page-header">
         <h2>{t("pages.main.title")}</h2>
-        <Link to="/types/new" className="btn btn-primary">
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={() => setModalOpen(true)}
+        >
           {t("pages.main.addType")}
-        </Link>
+        </button>
       </div>
 
       {types.length > 0 && (
@@ -68,9 +79,13 @@ export function MainPage() {
       {!loading && !error && filtered.length === 0 && types.length === 0 && (
         <div className="empty-state">
           <p>{t("pages.main.empty")}</p>
-          <Link to="/types/new" className="btn btn-primary">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setModalOpen(true)}
+          >
             {t("pages.main.emptyCta")}
-          </Link>
+          </button>
         </div>
       )}
 
@@ -106,6 +121,12 @@ export function MainPage() {
           ))}
         </ul>
       )}
+
+      <CreateTypeModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onCreated={handleTypeCreated}
+      />
     </section>
   );
 }

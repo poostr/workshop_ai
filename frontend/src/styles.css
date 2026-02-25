@@ -426,6 +426,30 @@ body {
   gap: 10px;
 }
 
+/* ── Modal ── */
+
+.modal-dialog {
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 0;
+  max-width: 440px;
+  width: calc(100% - 32px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+}
+
+.modal-dialog::backdrop {
+  background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+  padding: 24px;
+}
+
+.modal-content h3 {
+  margin: 0 0 16px;
+  font-size: 1.1rem;
+}
+
 /* ── Utilities ── */
 
 .error-message {

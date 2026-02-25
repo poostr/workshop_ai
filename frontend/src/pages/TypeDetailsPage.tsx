@@ -45,16 +45,24 @@ function MoveSection({
   const [moveError, setMoveError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  const stageCount = (s: StageCode): number =>
+    item.counts[s.toLowerCase() as keyof typeof item.counts];
+
   const availableFrom = STAGES.filter(
-    (s) =>
-      item.counts[s.toLowerCase() as keyof typeof item.counts] > 0 &&
-      STAGE_INDEX[s] < STAGES.length - 1,
+    (s) => stageCount(s) > 0 && STAGE_INDEX[s] < STAGES.length - 1,
   );
 
-  const availableTo = STAGES.filter((s) => STAGE_INDEX[s] > STAGE_INDEX[fromStage]);
+  const availableTo = STAGES.filter(
+    (s) => STAGE_INDEX[s] > STAGE_INDEX[fromStage],
+  );
 
-  const maxQty =
-    item.counts[fromStage.toLowerCase() as keyof typeof item.counts];
+  const maxQty = stageCount(fromStage);
+
+  useEffect(() => {
+    if (availableFrom.length > 0 && !availableFrom.includes(fromStage)) {
+      setFromStage(availableFrom[0]);
+    }
+  }, [availableFrom, fromStage]);
 
   useEffect(() => {
     if (availableTo.length > 0 && !availableTo.includes(toStage)) {
@@ -84,6 +92,15 @@ function MoveSection({
     }
   };
 
+  if (availableFrom.length === 0) {
+    return (
+      <div className="move-section">
+        <h3>{t("pages.typeDetails.move")}</h3>
+        <p className="section-empty">{t("pages.typeDetails.moveNoAvailable")}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="move-section">
       <h3>{t("pages.typeDetails.move")}</h3>
@@ -94,19 +111,11 @@ function MoveSection({
             value={fromStage}
             onChange={(e) => setFromStage(e.target.value as StageCode)}
           >
-            {availableFrom.length > 0
-              ? availableFrom.map((s) => (
-                  <option key={s} value={s}>
-                    {t(`stages.${s}`)}
-                  </option>
-                ))
-              : STAGES.filter((s) => STAGE_INDEX[s] < STAGES.length - 1).map(
-                  (s) => (
-                    <option key={s} value={s}>
-                      {t(`stages.${s}`)}
-                    </option>
-                  ),
-                )}
+            {availableFrom.map((s) => (
+              <option key={s} value={s}>
+                {t(`stages.${s}`)}
+              </option>
+            ))}
           </select>
         </label>
 
@@ -152,7 +161,13 @@ function MoveSection({
   );
 }
 
-function HistorySection({ typeId }: { typeId: number }) {
+function HistorySection({
+  typeId,
+  refreshKey,
+}: {
+  typeId: number;
+  refreshKey: number;
+}) {
   const { t } = useTranslation();
   const [groups, setGroups] = useState<TypeHistoryGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,7 +186,7 @@ function HistorySection({ typeId }: { typeId: number }) {
 
   useEffect(() => {
     void fetchHistory();
-  }, [fetchHistory]);
+  }, [fetchHistory, refreshKey]);
 
   return (
     <div className="history-section">
@@ -263,7 +278,7 @@ export function TypeDetailsPage() {
 
       <StageCountsSection item={item} />
       <MoveSection item={item} onMoved={handleMoved} />
-      <HistorySection typeId={item.id} />
+      <HistorySection typeId={item.id} refreshKey={refreshKey} />
     </section>
   );
 }

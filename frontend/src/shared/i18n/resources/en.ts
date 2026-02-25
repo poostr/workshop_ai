@@ -42,6 +42,7 @@ export const en = {
       moveQty: "Quantity",
       moveSubmit: "Move",
       available: "Available: {{count}}",
+      moveNoAvailable: "No items available for moving.",
       history: "History",
       historyEmpty: "No records yet.",
       historyQty: "{{qty}} pcs.",

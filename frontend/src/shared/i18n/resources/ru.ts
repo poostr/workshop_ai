@@ -42,6 +42,7 @@ export const ru = {
       moveQty: "Количество",
       moveSubmit: "Переместить",
       available: "Доступно: {{count}}",
+      moveNoAvailable: "Нет доступных миниатюр для перемещения.",
       history: "История",
       historyEmpty: "Записей пока нет.",
       historyQty: "{{qty}} шт.",

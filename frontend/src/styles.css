@@ -386,7 +386,8 @@ body {
   font-size: 0.78rem;
 }
 
-.empty-history {
+.empty-history,
+.section-empty {
   color: var(--color-text-secondary);
   text-align: center;
   padding: 16px;

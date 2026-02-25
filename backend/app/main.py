@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.v1.errors import register_api_exception_handlers
 from app.api.v1.router import router as api_v1_router
 from app.config import get_settings
 
@@ -7,6 +8,7 @@ from app.config import get_settings
 def create_app() -> FastAPI:
     settings = get_settings()
     app = FastAPI(title="Miniatures Progress Tracker API", version="0.1.0")
+    register_api_exception_handlers(app)
 
     app.include_router(api_v1_router, prefix="/api/v1")
 

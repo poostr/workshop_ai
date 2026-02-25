@@ -122,7 +122,7 @@ Task DOD
 
 ## Этап C — Backend API и бизнес‑логика (FastAPI)
 
-- [ ] API-001 Базовые контракты API: схемы, коды ошибок, валидация
+- [x] API-001 Базовые контракты API: схемы, коды ошибок, валидация
 Task Context
 - Все endpoint’ы под `/api/v1`.
 - Ошибки бизнес-логики: HTTP 400 + `code` (например `ERR_INSUFFICIENT_QTY`, `ERR_INVALID_STAGE_TRANSITION`, `ERR_DUPLICATE_TYPE_NAME`, `ERR_INVALID_STAGE`).

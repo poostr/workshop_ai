@@ -2,6 +2,29 @@
 
 ## 2026-02-25
 
+### API-001
+
+- Реализован базовый контракт ошибок API в `backend/app/api/v1/errors.py`:
+  - добавлены коды ошибок `ERR_VALIDATION`, `ERR_INVALID_STAGE`, `ERR_INVALID_STAGE_TRANSITION`, `ERR_INSUFFICIENT_QTY`, `ERR_DUPLICATE_TYPE_NAME`;
+  - добавлено единое исключение `ApiContractError` для бизнес-ошибок;
+  - зарегистрированы глобальные обработчики ошибок для унифицированного JSON-формата (`code`, `message`) и HTTP 400 для бизнес-валидационных ошибок.
+- Добавлены Pydantic-схемы API в `backend/app/api/v1/schemas.py`:
+  - `ApiStatusResponse`, `ErrorResponse`, `TypeMoveRequest`;
+  - `TypeMoveRequest` использует строгую валидацию (`strict=True`, `extra='forbid'`) и системные стадии через `StageCode`.
+- Доменные стадии переведены на enum в `backend/app/domain/stages.py`:
+  - введён `StageCode` как единый источник системных кодов стадий;
+  - `STAGES` теперь формируется из `StageCode`.
+- Обновлён `backend/app/api/v1/router.py`: `GET /api/v1/status` теперь использует `response_model=ApiStatusResponse`.
+- Обновлён `backend/app/main.py`: зарегистрированы обработчики ошибок API-контрактов.
+- Добавлены тесты `backend/tests/test_api_contracts.py`:
+  - проверка единого формата бизнес-ошибок;
+  - проверка единого формата ошибок валидации запроса;
+  - проверка строгой валидации `TypeMoveRequest`.
+- В `BACKLOG.md` задача `API-001` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0012-api-contracts-validation-and-error-format.md`;
+  - `tasks/API-001.md`.
+
 ### CLEAN-002
 
 - Централизован источник стадий в data-layer:

@@ -2,6 +2,23 @@
 
 ## 2026-02-25
 
+### API-003
+
+- Реализован endpoint `POST /api/v1/types` в `backend/app/api/v1/router.py`:
+  - добавлено создание нового типа миниатюр с ответом в формате `TypeListItem` и `201 Created`;
+  - добавлена обработка нарушения уникальности имени с возвратом бизнес-кода `ERR_DUPLICATE_TYPE_NAME`;
+  - для прочих ошибок целостности сохранено стандартное поведение (без маскировки в duplicate).
+- Расширены API-схемы в `backend/app/api/v1/schemas.py`:
+  - добавлена `TypeCreateRequest` со строгой валидацией (`strict=True`, `extra='forbid'`, trim строк) и ограничением длины имени.
+- Добавлены интеграционные тесты `backend/tests/test_types_create_api.py`:
+  - успешное создание типа возвращает нулевые counts по всем стадиям;
+  - дублирующее имя возвращает `400` и `ERR_DUPLICATE_TYPE_NAME`;
+  - подтверждено сидирование `stage_counts` при создании типа.
+- В `BACKLOG.md` задача `API-003` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0014-create-type-endpoint-api-003.md`;
+  - `tasks/API-003.md`.
+
 ### API-002
 
 - Реализован endpoint `GET /api/v1/types` в `backend/app/api/v1/router.py`:

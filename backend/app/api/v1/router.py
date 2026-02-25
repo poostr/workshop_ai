@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import Select, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api.v1.errors import ApiContractError, ErrorCode
 from app.api.v1.schemas import (
     ApiStatusResponse,
+    TypeCreateRequest,
     TypeListItem,
     TypeListResponse,
     TypeStageCounts,
@@ -42,6 +45,50 @@ def _iter_type_stage_rows(db_session: Session) -> Iterator[tuple[int, str, str |
     )
     rows = db_session.execute(stmt).all()
     return ((row[0], row[1], row[2], row[3]) for row in rows)
+
+
+def _is_duplicate_type_name_error(error: IntegrityError) -> bool:
+    lowered_error = str(error.orig).lower()
+    return "uq_miniature_types_name" in lowered_error or "miniature_types.name" in lowered_error
+
+
+@router.post(
+    "/types",
+    tags=["types"],
+    response_model=TypeListItem,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_type(
+    payload: TypeCreateRequest,
+    db_session: Session = Depends(get_db_session),
+) -> TypeListItem:
+    created_type = MiniatureType(name=payload.name)
+    db_session.add(created_type)
+
+    try:
+        db_session.commit()
+    except IntegrityError as error:
+        db_session.rollback()
+        if _is_duplicate_type_name_error(error):
+            raise ApiContractError(
+                code=ErrorCode.ERR_DUPLICATE_TYPE_NAME,
+                message="Miniature type with this name already exists.",
+            ) from error
+        raise
+
+    db_session.refresh(created_type)
+    zero_counts = _base_counts()
+    return TypeListItem(
+        id=created_type.id,
+        name=created_type.name,
+        counts=TypeStageCounts(
+            in_box=zero_counts[StageCode.IN_BOX.value],
+            building=zero_counts[StageCode.BUILDING.value],
+            priming=zero_counts[StageCode.PRIMING.value],
+            painting=zero_counts[StageCode.PAINTING.value],
+            done=zero_counts[StageCode.DONE.value],
+        ),
+    )
 
 
 @router.get("/types", tags=["types"], response_model=TypeListResponse)

@@ -23,6 +23,12 @@ class TypeMoveRequest(BaseModel):
     qty: int = Field(gt=0, le=1_000_000)
 
 
+class TypeCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=255)
+
+
 class TypeStageCounts(BaseModel):
     in_box: int
     building: int

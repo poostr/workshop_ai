@@ -2,6 +2,23 @@
 
 ## 2026-02-25
 
+### FE-007
+
+- Реализован UI экспорта/импорта состояния приложения на главной странице:
+  - добавлен компонент `ExportImportSection` (`frontend/src/components/ExportImportSection.tsx`);
+  - кнопка «Экспорт» вызывает `GET /api/v1/export` и скачивает JSON-файл с timestamp в имени (`miniatures-export-YYYYMMDDHHММ.json`);
+  - кнопка «Импорт» открывает file picker, валидирует JSON на клиенте, отправляет `POST /api/v1/import`;
+  - после успешного импорта список типов перезагружается и показывается success-сообщение;
+  - ошибки формата и backend-ошибки отображаются локализованно через `getLocalizedErrorMessage`.
+- Интегрирован `ExportImportSection` в `MainPage` внизу страницы с визуальным разделителем.
+- Добавлены CSS-стили: `.export-import-section`, `.export-import-actions`, `.success-message`.
+- Полный frontend quality gate пройден: `tsc --noEmit` (0 ошибок), `eslint .` (0 ошибок), `vite build` (dist/ собран).
+- Backend тесты: 25 passed.
+- В `BACKLOG.md` задача `FE-007` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0027-export-import-ui-fe-007.md`;
+  - `tasks/FE-007.md`.
+
 ### FE-006
 
 - Доработан компонент `HistorySection` в `frontend/src/pages/TypeDetailsPage.tsx`:

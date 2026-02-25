@@ -7,6 +7,7 @@ import { getLocalizedErrorMessage } from "../shared/api/errors";
 import type { TypeListItem } from "../shared/api/types";
 import { STAGES } from "../shared/api/types";
 import { CreateTypeModal } from "../components/CreateTypeModal";
+import { ExportImportSection } from "../components/ExportImportSection";
 
 export function MainPage() {
   const { t } = useTranslation();
@@ -121,6 +122,8 @@ export function MainPage() {
           ))}
         </ul>
       )}
+
+      <ExportImportSection onImported={fetchTypes} />
 
       <CreateTypeModal
         open={modalOpen}

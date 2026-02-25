@@ -252,7 +252,7 @@ Task Context
 Task DOD
 - История отображает группы корректно, включая пограничные кейсы.
 
-- [ ] FE-007 Export/Import UI
+- [x] FE-007 Export/Import UI
 Task Context
 - Экспорт: скачать JSON.
 - Импорт: загрузить JSON, после успеха обновить UI.

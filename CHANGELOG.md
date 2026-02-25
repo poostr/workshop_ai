@@ -2,6 +2,26 @@
 
 ## 2026-02-25
 
+### API-008
+
+- Реализован endpoint `POST /api/v1/import` в `backend/app/api/v1/router.py`:
+  - добавлен импорт JSON с merge по имени типа (`miniature_types.name`);
+  - при совпадении имени выполняется суммирование `stage_counts` по стадиям и append истории в `history_logs`;
+  - при отсутствии типа создается новый тип и к нему применяется импортируемое состояние;
+  - весь импорт выполняется в одной транзакции (`all-or-nothing`) с откатом при любой ошибке.
+- Добавлена явная бизнес-ошибка формата импорта:
+  - в `backend/app/api/v1/errors.py` добавлен код `ERR_INVALID_IMPORT_FORMAT`;
+  - некорректный payload импорта возвращает `400` с предсказуемым контрактом ошибки.
+- Расширены API-схемы в `backend/app/api/v1/schemas.py`:
+  - добавлены модели `ImportStageCount`, `ImportHistoryItem`, `ImportTypeItem`, `ImportRequest`, `ImportResponse`.
+- Добавлены интеграционные тесты `backend/tests/test_import_api.py`:
+  - проверка merge-семантики (суммы counts и append истории);
+  - проверка `all-or-nothing` rollback при частично некорректном payload.
+- В `BACKLOG.md` задача `API-008` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0019-import-endpoint-api-008.md`;
+  - `tasks/API-008.md`.
+
 ### API-007
 
 - Реализован endpoint `GET /api/v1/export` в `backend/app/api/v1/router.py`:

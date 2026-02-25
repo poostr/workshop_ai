@@ -80,3 +80,37 @@ class ExportTypeItem(BaseModel):
 
 class ExportResponse(BaseModel):
     types: list[ExportTypeItem]
+
+
+class ImportStageCount(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    stage: StageCode
+    count: int = Field(strict=True, ge=0, le=1_000_000)
+
+
+class ImportHistoryItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    from_stage: StageCode
+    to_stage: StageCode
+    qty: int = Field(strict=True, gt=0, le=1_000_000)
+    created_at: datetime
+
+
+class ImportTypeItem(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
+
+    name: str = Field(min_length=1, max_length=255)
+    stage_counts: list[ImportStageCount]
+    history: list[ImportHistoryItem]
+
+
+class ImportRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    types: list[ImportTypeItem]
+
+
+class ImportResponse(BaseModel):
+    status: str

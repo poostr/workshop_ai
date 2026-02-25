@@ -182,7 +182,7 @@ Task Context
 Task DOD
 - Endpoint отдаёт валидный JSON со всем состоянием.
 
-- [ ] API-008 `POST /api/v1/import` импорт JSON (merge + all-or-nothing)
+- [x] API-008 `POST /api/v1/import` импорт JSON (merge + all-or-nothing)
 Task Context
 - Импорт поверх существующих данных: merge по имени.
 - Если имя совпало: counts суммируются (по стадиям), history append.

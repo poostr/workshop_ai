@@ -4,7 +4,8 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -16,6 +17,9 @@ from app.api.v1.schemas import (
     ExportResponse,
     ExportStageCount,
     ExportTypeItem,
+    ImportRequest,
+    ImportResponse,
+    ImportTypeItem,
     TypeCreateRequest,
     TypeHistoryGroup,
     TypeHistoryResponse,
@@ -219,6 +223,81 @@ def _iter_export_history_rows(
     return ((row[0], row[1], row[2], row[3], row[4]) for row in rows)
 
 
+def _parse_import_payload(raw_payload: dict[str, object]) -> ImportRequest:
+    try:
+        return ImportRequest.model_validate(raw_payload)
+    except ValidationError as error:
+        raise ApiContractError(
+            code=ErrorCode.ERR_INVALID_IMPORT_FORMAT,
+            message="Import payload is invalid.",
+        ) from error
+
+
+def _build_stage_delta_map(item: ImportTypeItem) -> dict[str, int]:
+    stage_delta_by_name: dict[str, int] = {}
+    for stage_count in item.stage_counts:
+        stage_name = stage_count.stage.value
+        if stage_name in stage_delta_by_name:
+            raise ApiContractError(
+                code=ErrorCode.ERR_INVALID_IMPORT_FORMAT,
+                message="Import payload is invalid.",
+            )
+        stage_delta_by_name[stage_name] = stage_count.count
+
+    expected_stages = {stage.value for stage in StageCode}
+    if set(stage_delta_by_name.keys()) != expected_stages:
+        raise ApiContractError(
+            code=ErrorCode.ERR_INVALID_IMPORT_FORMAT,
+            message="Import payload is invalid.",
+        )
+
+    return stage_delta_by_name
+
+
+def _resolve_type_for_import(db_session: Session, type_name: str) -> MiniatureType:
+    existing_type = db_session.execute(
+        select(MiniatureType).where(MiniatureType.name == type_name)
+    ).scalar_one_or_none()
+    if existing_type is not None:
+        return existing_type
+
+    created_type = MiniatureType(name=type_name)
+    db_session.add(created_type)
+    db_session.flush()
+    return created_type
+
+
+def _apply_import_stage_deltas(
+    db_session: Session, type_id: int, stage_delta_by_name: dict[str, int]
+) -> None:
+    stage_rows = db_session.execute(
+        select(StageCount).where(StageCount.type_id == type_id).with_for_update()
+    ).scalars()
+    stage_rows_by_name = {row.stage_name: row for row in stage_rows}
+
+    for stage in StageCode:
+        stage_row = stage_rows_by_name.get(stage.value)
+        if stage_row is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Stage counts are not initialized for this type.",
+            )
+        stage_row.count += stage_delta_by_name[stage.value]
+
+
+def _append_import_history(db_session: Session, type_id: int, item: ImportTypeItem) -> None:
+    for history_item in item.history:
+        db_session.add(
+            HistoryLog(
+                type_id=type_id,
+                from_stage=history_item.from_stage.value,
+                to_stage=history_item.to_stage.value,
+                qty=history_item.qty,
+                created_at=history_item.created_at,
+            )
+        )
+
+
 @router.post(
     "/types",
     tags=["types"],
@@ -380,3 +459,28 @@ def export_state(db_session: Session = Depends(get_db_session)) -> ExportRespons
         )
 
     return ExportResponse(types=export_items)
+
+
+@router.post("/import", tags=["import-export"], response_model=ImportResponse)
+def import_state(
+    raw_payload: dict[str, object] = Body(...),
+    db_session: Session = Depends(get_db_session),
+) -> ImportResponse:
+    payload = _parse_import_payload(raw_payload)
+
+    try:
+        with db_session.begin():
+            for type_item in payload.types:
+                stage_delta_by_name = _build_stage_delta_map(type_item)
+                target_type = _resolve_type_for_import(db_session, type_item.name)
+                _apply_import_stage_deltas(db_session, target_type.id, stage_delta_by_name)
+                _append_import_history(db_session, target_type.id, type_item)
+    except ApiContractError:
+        raise
+    except IntegrityError as error:
+        raise ApiContractError(
+            code=ErrorCode.ERR_INVALID_IMPORT_FORMAT,
+            message="Import payload is invalid.",
+        ) from error
+
+    return ImportResponse(status="ok")

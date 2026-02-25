@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-02-25
+
+### DB-002
+
+- Подтверждён bootstrap Alembic в backend: используются `backend/alembic.ini`, `backend/alembic/env.py` и стартовая ревизия `backend/alembic/versions/0001_init_schema_placeholder.py`.
+- Зафиксирован автопрогон миграций при старте контейнера через `backend/entrypoint.sh` (`alembic upgrade head` перед запуском `uvicorn`).
+- Добавлен интеграционный тест `backend/tests/test_migrations.py`:
+  - выполняет `alembic upgrade head` на временной БД;
+  - проверяет создание таблиц `miniature_types`, `stage_counts`, `history_logs` и `alembic_version`.
+- В `BACKLOG.md` задача `DB-002` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0009-alembic-bootstrap-db-002.md`;
+  - `tasks/DB-002.md`.
+
 ## 2026-02-24
 
 ### INIT-001

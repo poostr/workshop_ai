@@ -97,7 +97,7 @@ Task DOD
   - CHECK `stage_counts.count >= 0`
   - constraints/indexes для FK и уникальности `(type_id, stage_name)`
 
-- [ ] DB-002 Alembic: init + миграции + автопрогон при старте
+- [x] DB-002 Alembic: init + миграции + автопрогон при старте
 Task Context
 - Требуется автоматическое накатывание `alembic upgrade head` при старте контейнера app.
 Task DOD

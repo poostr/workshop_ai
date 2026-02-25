@@ -3,9 +3,6 @@ export const en = {
     title: "Miniatures Progress Tracker",
     language: "Language selection",
   },
-  nav: {
-    main: "Main",
-  },
   stages: {
     IN_BOX: "In box",
     BUILDING: "Building",
@@ -60,6 +57,5 @@ export const en = {
     exportBtn: "Export",
     importBtn: "Import",
     importSuccess: "Import completed successfully.",
-    importError: "Import error.",
   },
 };

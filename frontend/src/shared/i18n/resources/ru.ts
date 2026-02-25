@@ -3,9 +3,6 @@ export const ru = {
     title: "Трекер прогресса миниатюр",
     language: "Выбор языка",
   },
-  nav: {
-    main: "Главная",
-  },
   stages: {
     IN_BOX: "В коробке",
     BUILDING: "Сборка",
@@ -60,6 +57,5 @@ export const ru = {
     exportBtn: "Экспорт",
     importBtn: "Импорт",
     importSuccess: "Импорт выполнен успешно.",
-    importError: "Ошибка импорта.",
   },
 };

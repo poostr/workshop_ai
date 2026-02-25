@@ -2,6 +2,28 @@
 
 ## 2026-02-25
 
+### CLEAN-004
+
+- Проведена приборка frontend-слоя после этапа D:
+  - удалена неиспользуемая секция `nav` из i18n-словарей `ru.ts` и `en.ts` (ключ `nav.main` не использовался после упрощения навигации);
+  - удалён неиспользуемый ключ `importExport.importError` из обоих словарей (ошибки импорта обрабатываются через `getLocalizedErrorMessage`).
+- Проверено отсутствие неиспользуемых компонентов — все компоненты задействованы.
+- Проверено отсутствие утечек в консоль:
+  - ноль `console.log/warn/error` в frontend;
+  - ноль `print()`/`logging.*` в backend;
+  - данные экспорта/импорта нигде не логируются.
+- Security-аудит подтвердил корректность:
+  - CORS: явный allowlist localhost-origin, `allow_credentials=False`;
+  - Nginx: API proxy ограничен `^~ /api/`, `proxy_redirect off`;
+  - валидация: `extra="forbid"`, strict-поля, `model_validator` на import.
+- Полный quality gate пройден:
+  - Backend: `ruff check` (0 ошибок), `pytest` (25 passed);
+  - Frontend: `tsc --noEmit` (0 ошибок), `eslint` (0 ошибок), `vite build` (dist/ собран).
+- В `BACKLOG.md` задача `CLEAN-004` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0028-clean-stage-d-i18n-security.md`;
+  - `tasks/CLEAN-004.md`.
+
 ### FE-007
 
 - Реализован UI экспорта/импорта состояния приложения на главной странице:

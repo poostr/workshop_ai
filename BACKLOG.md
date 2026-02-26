@@ -292,7 +292,7 @@ Task Context
 Task DOD
 - Тесты покрывают 299/300/301 секунд и кейс «не соседние — не группировать».
 
-- [ ] QA-004 Tests: import all-or-nothing + merge семантика
+- [x] QA-004 Tests: import all-or-nothing + merge семантика
 Task Context
 - Импорт должен откатываться целиком при ошибке.
 - Merge по имени: суммы counts и append истории.

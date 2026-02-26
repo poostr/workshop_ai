@@ -11,6 +11,7 @@ from app.main import create_app
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _create_type_and_seed_history(
     database_url: str,
     type_name: str,
@@ -34,6 +35,7 @@ def _create_type_and_seed_history(
 # ---------------------------------------------------------------------------
 # Compound boundary test: 299 / 300 / 301 seconds in one sequence
 # ---------------------------------------------------------------------------
+
 
 def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
     database_url: str,
@@ -87,6 +89,7 @@ def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
 # Non-adjacent same-transition events must NOT be grouped
 # ---------------------------------------------------------------------------
 
+
 def test_get_type_history_does_not_group_non_adjacent_equal_transitions(
     database_url: str,
 ) -> None:
@@ -139,6 +142,7 @@ def test_get_type_history_does_not_group_non_adjacent_equal_transitions(
 # Exact boundary: 300 seconds (two events only) → MUST group
 # ---------------------------------------------------------------------------
 
+
 def test_get_type_history_exactly_300_seconds_groups(database_url: str) -> None:
     """Two events of the same transition exactly 300s apart → one group."""
     client, type_id = _create_type_and_seed_history(
@@ -171,6 +175,7 @@ def test_get_type_history_exactly_300_seconds_groups(database_url: str) -> None:
 # ---------------------------------------------------------------------------
 # Exact boundary: 301 seconds (two events only) → MUST NOT group
 # ---------------------------------------------------------------------------
+
 
 def test_get_type_history_exactly_301_seconds_does_not_group(database_url: str) -> None:
     """Two events of the same transition 301s apart → two separate groups."""
@@ -211,6 +216,7 @@ def test_get_type_history_exactly_301_seconds_does_not_group(database_url: str) 
 # Sliding window: comparison is against previous event, not group start
 # ---------------------------------------------------------------------------
 
+
 def test_get_type_history_sliding_window_groups_beyond_300s_from_start(
     database_url: str,
 ) -> None:
@@ -250,6 +256,7 @@ def test_get_type_history_sliding_window_groups_beyond_300s_from_start(
 # Empty history
 # ---------------------------------------------------------------------------
 
+
 def test_get_type_history_empty_returns_empty_items(database_url: str) -> None:
     """A type with no history events returns an empty items list."""
     client = TestClient(create_app())
@@ -269,6 +276,7 @@ def test_get_type_history_empty_returns_empty_items(database_url: str) -> None:
 # ---------------------------------------------------------------------------
 # Single event → exactly one group
 # ---------------------------------------------------------------------------
+
 
 def test_get_type_history_single_event_returns_one_group(database_url: str) -> None:
     client, type_id = _create_type_and_seed_history(
@@ -300,6 +308,7 @@ def test_get_type_history_single_event_returns_one_group(database_url: str) -> N
 # ---------------------------------------------------------------------------
 # Multiple disjoint groups in one sequence
 # ---------------------------------------------------------------------------
+
 
 def test_get_type_history_multiple_disjoint_groups(database_url: str) -> None:
     """Sequence with interleaving transitions forming 3 distinct groups.
@@ -351,6 +360,7 @@ def test_get_type_history_multiple_disjoint_groups(database_url: str) -> None:
 # ---------------------------------------------------------------------------
 # Simultaneous events (0-second gap) → MUST group
 # ---------------------------------------------------------------------------
+
 
 def test_get_type_history_simultaneous_events_group(database_url: str) -> None:
     """Events at the exact same timestamp must be grouped together."""

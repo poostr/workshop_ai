@@ -300,7 +300,7 @@ Task DOD
 - Тест подтверждает rollback на битом JSON/невалидных стадиях.
 - Тест подтверждает sums и append при совпадении имени.
 
-- [ ] QA-005 Minimal e2e smoke (опционально, но желательно)
+- [x] QA-005 Minimal e2e smoke (опционально, но желательно)
 Task Context
 - Минимум: поднять docker compose, пройти сценарий create type -> move -> export/import -> history.
 Task DOD

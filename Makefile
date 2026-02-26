@@ -2,7 +2,7 @@ BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 BACKEND_PYTHON ?= $(if $(wildcard $(BACKEND_DIR)/.venv/bin/python),.venv/bin/python,python3)
 
-.PHONY: quality backend-format backend-lint backend-test frontend-format frontend-lint frontend-typecheck frontend-build frontend-test
+.PHONY: quality backend-format backend-lint backend-test frontend-format frontend-lint frontend-typecheck frontend-build frontend-test e2e-smoke
 
 quality: backend-format backend-lint backend-test frontend-format frontend-lint frontend-typecheck frontend-build frontend-test
 
@@ -29,3 +29,6 @@ frontend-build:
 
 frontend-test:
 	cd $(FRONTEND_DIR) && npm run test
+
+e2e-smoke:
+	python3 tests/e2e_smoke.py $(E2E_BASE_URL)

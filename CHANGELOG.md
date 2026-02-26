@@ -1,5 +1,20 @@
 # Changelog
 
+### QA-005
+
+- Добавлен e2e smoke-тест `tests/e2e_smoke.py` — самодостаточный Python-скрипт (stdlib, без доп. зависимостей):
+  - 17 шагов полного сценария: health → create type → duplicate → seed via import → move forward → move skip stages → move backward (error) → insufficient qty (error) → history → export → import merge → verify merge counts → verify history append → list types → invalid import (error);
+  - поддержка произвольного `BASE_URL` (по умолчанию `http://localhost:8000/api/v1`);
+  - wait-for-health с polling (до 60с) перед запуском сценария;
+  - уникальные имена типов (timestamp-суффикс) — не загрязняет рабочие данные.
+- Добавлен Makefile-таргет `make e2e-smoke` с опциональным `E2E_BASE_URL`.
+- README.md дополнен секцией «E2E Smoke Test» с инструкциями и ручным чеклистом для UI-проверок.
+- Верификация: 49 backend тестов passed, e2e smoke 17/17 steps OK (прямой доступ и через nginx).
+- В `BACKLOG.md` задача `QA-005` помечена выполненной.
+- Добавлены артефакты процесса:
+  - `ADR/ADR-0032-e2e-smoke-test-qa-005.md`;
+  - `tasks/QA-005.md`.
+
 ### QA-004
 
 - Расширены и доработаны тесты импорта в `backend/tests/test_import_api.py`:

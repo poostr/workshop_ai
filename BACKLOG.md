@@ -306,7 +306,7 @@ Task Context
 Task DOD
 - Добавлен e2e smoke (Playwright или аналог) либо документирован ручной чеклист в `README.md`.
 
-- [ ] CLEAN-005 Приборка этапа E
+- [x] CLEAN-005 Приборка этапа E
 Task Context
 - Тесты должны быть быстрыми и стабильными.
 Task DOD

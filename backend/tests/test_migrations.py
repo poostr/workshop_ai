@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from sqlalchemy import create_engine, inspect, text
+from sqlalchemy import inspect, text
 
 from app.domain.stages import STAGES
+from fastapi.testclient import TestClient
 
 
-def test_alembic_upgrade_head_creates_schema(database_url: str) -> None:
-    engine = create_engine(database_url)
-    inspector = inspect(engine)
+def test_alembic_upgrade_head_creates_schema(client: TestClient, db_engine) -> None:
+    inspector = inspect(db_engine)
 
     assert set(inspector.get_table_names()) == {
         "alembic_version",
@@ -17,9 +17,8 @@ def test_alembic_upgrade_head_creates_schema(database_url: str) -> None:
     }
 
 
-def test_type_insert_seeds_all_stage_counts(database_url: str) -> None:
-    engine = create_engine(database_url)
-    with engine.begin() as connection:
+def test_type_insert_seeds_all_stage_counts(client: TestClient, db_engine) -> None:
+    with db_engine.begin() as connection:
         connection.execute(
             text("INSERT INTO miniature_types (name) VALUES (:name)"),
             {"name": "Space Marines"},

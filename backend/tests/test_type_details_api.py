@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-
-from app.config import get_settings
-from app.main import create_app
+from sqlalchemy import text
 
 
-def test_get_type_returns_type_details_with_all_stage_counts(database_url: str) -> None:
 
-    engine = create_engine(database_url)
-    with engine.begin() as connection:
+def test_get_type_returns_type_details_with_all_stage_counts(client: TestClient, db_engine) -> None:
+
+    with db_engine.begin() as connection:
         connection.execute(
             text("INSERT INTO miniature_types (name) VALUES (:name)"),
             {"name": "Necrons"},
@@ -31,11 +28,8 @@ def test_get_type_returns_type_details_with_all_stage_counts(database_url: str) 
             )
         )
 
-    try:
-        response = TestClient(create_app()).get("/api/v1/types/1")
-    finally:
-        get_settings.cache_clear()
-
+    if True:
+        response = client.get("/api/v1/types/1")
     assert response.status_code == 200
     assert response.json() == {
         "id": 1,
@@ -50,12 +44,9 @@ def test_get_type_returns_type_details_with_all_stage_counts(database_url: str) 
     }
 
 
-def test_get_type_returns_404_for_missing_type(database_url: str) -> None:
+def test_get_type_returns_404_for_missing_type(client: TestClient, db_engine) -> None:
 
-    try:
-        response = TestClient(create_app()).get("/api/v1/types/999")
-    finally:
-        get_settings.cache_clear()
-
+    if True:
+        response = client.get("/api/v1/types/999")
     assert response.status_code == 404
     assert response.json() == {"detail": "Type not found."}

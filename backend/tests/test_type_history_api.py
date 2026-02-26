@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from app.config import get_settings
-from app.main import create_app
 
 
 # ---------------------------------------------------------------------------
@@ -13,23 +11,18 @@ from app.main import create_app
 
 
 def _create_type_and_seed_history(
-    database_url: str,
-    type_name: str,
-    rows_sql: str,
-) -> tuple[TestClient, int]:
+    client: TestClient, db_engine, type_name: str, rows_sql: str
+) -> int:
     """Create a type via API, insert raw history rows, return (client, type_id)."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
     created = client.post("/api/v1/types", json={"name": type_name})
     assert created.status_code == 201
     type_id: int = created.json()["id"]
 
-    with engine.begin() as conn:
+    with db_engine.begin() as conn:
         conn.execute(text(rows_sql))
 
-    engine.dispose()
-    return client, type_id
+    return type_id
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +31,7 @@ def _create_type_and_seed_history(
 
 
 def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
-    database_url: str,
+    client: TestClient, db_engine
 ) -> None:
     """Events chained at 299s, 300s, 301s gaps.
 
@@ -50,8 +43,9 @@ def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
 
     Expected: 2 groups  [E1+E2+E3 qty=6], [E4 qty=4].
     """
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "Necrons",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -63,11 +57,8 @@ def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     body = response.json()
     assert len(body["items"]) == 2
@@ -91,13 +82,14 @@ def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
 
 
 def test_get_type_history_does_not_group_non_adjacent_equal_transitions(
-    database_url: str,
+    client: TestClient, db_engine
 ) -> None:
     """A→B, then B→C, then A→B again — the two A→B events are separated
     by a different transition and must stay in separate groups even if
     the time gap is under 300s."""
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "Aeldari",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -108,11 +100,8 @@ def test_get_type_history_does_not_group_non_adjacent_equal_transitions(
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     assert response.json() == {
         "items": [
@@ -143,10 +132,11 @@ def test_get_type_history_does_not_group_non_adjacent_equal_transitions(
 # ---------------------------------------------------------------------------
 
 
-def test_get_type_history_exactly_300_seconds_groups(database_url: str) -> None:
+def test_get_type_history_exactly_300_seconds_groups(client: TestClient, db_engine) -> None:
     """Two events of the same transition exactly 300s apart → one group."""
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "Tyranids",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -156,11 +146,8 @@ def test_get_type_history_exactly_300_seconds_groups(database_url: str) -> None:
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     items = response.json()["items"]
     assert len(items) == 1
@@ -177,10 +164,11 @@ def test_get_type_history_exactly_300_seconds_groups(database_url: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_type_history_exactly_301_seconds_does_not_group(database_url: str) -> None:
+def test_get_type_history_exactly_301_seconds_does_not_group(client: TestClient, db_engine) -> None:
     """Two events of the same transition 301s apart → two separate groups."""
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "Orks",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -190,11 +178,8 @@ def test_get_type_history_exactly_301_seconds_does_not_group(database_url: str) 
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     items = response.json()["items"]
     assert len(items) == 2
@@ -218,13 +203,14 @@ def test_get_type_history_exactly_301_seconds_does_not_group(database_url: str) 
 
 
 def test_get_type_history_sliding_window_groups_beyond_300s_from_start(
-    database_url: str,
+    client: TestClient, db_engine
 ) -> None:
     """Chain of events each 299s apart. Total span from first to last is
     897s (>>300s), but every consecutive pair is within 300s so they all
     belong to a single group."""
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "Tau",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -236,11 +222,8 @@ def test_get_type_history_sliding_window_groups_beyond_300s_from_start(
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     items = response.json()["items"]
     assert len(items) == 1
@@ -257,18 +240,14 @@ def test_get_type_history_sliding_window_groups_beyond_300s_from_start(
 # ---------------------------------------------------------------------------
 
 
-def test_get_type_history_empty_returns_empty_items(database_url: str) -> None:
+def test_get_type_history_empty_returns_empty_items(client: TestClient, db_engine) -> None:
     """A type with no history events returns an empty items list."""
-    client = TestClient(create_app())
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "EmptyType"})
         assert created.status_code == 201
         type_id = created.json()["id"]
 
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     assert response.json() == {"items": []}
 
@@ -278,9 +257,10 @@ def test_get_type_history_empty_returns_empty_items(database_url: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_type_history_single_event_returns_one_group(database_url: str) -> None:
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+def test_get_type_history_single_event_returns_one_group(client: TestClient, db_engine) -> None:
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "SingleEvent",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -289,11 +269,8 @@ def test_get_type_history_single_event_returns_one_group(database_url: str) -> N
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     items = response.json()["items"]
     assert len(items) == 1
@@ -310,13 +287,14 @@ def test_get_type_history_single_event_returns_one_group(database_url: str) -> N
 # ---------------------------------------------------------------------------
 
 
-def test_get_type_history_multiple_disjoint_groups(database_url: str) -> None:
+def test_get_type_history_multiple_disjoint_groups(client: TestClient, db_engine) -> None:
     """Sequence with interleaving transitions forming 3 distinct groups.
 
     E1+E2 group (same transition, within 300s), E3 alone, E4+E5 group.
     """
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "MultiGroup",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -329,11 +307,8 @@ def test_get_type_history_multiple_disjoint_groups(database_url: str) -> None:
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     items = response.json()["items"]
     assert len(items) == 3
@@ -362,10 +337,11 @@ def test_get_type_history_multiple_disjoint_groups(database_url: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_get_type_history_simultaneous_events_group(database_url: str) -> None:
+def test_get_type_history_simultaneous_events_group(client: TestClient, db_engine) -> None:
     """Events at the exact same timestamp must be grouped together."""
-    client, type_id = _create_type_and_seed_history(
-        database_url,
+    type_id = _create_type_and_seed_history(
+        client,
+        db_engine,
         "Simultaneous",
         """
         INSERT INTO history_logs (type_id, from_stage, to_stage, qty, created_at)
@@ -376,11 +352,8 @@ def test_get_type_history_simultaneous_events_group(database_url: str) -> None:
         """,
     )
 
-    try:
+    if True:
         response = client.get(f"/api/v1/types/{type_id}/history")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     items = response.json()["items"]
     assert len(items) == 1

@@ -1,20 +1,15 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from app.config import get_settings
 from app.domain.stages import STAGES
-from app.main import create_app
 
 
-def test_post_types_creates_type_and_returns_zero_counts(database_url: str) -> None:
+def test_post_types_creates_type_and_returns_zero_counts(client: TestClient, db_engine) -> None:
 
-    try:
-        response = TestClient(create_app()).post("/api/v1/types", json={"name": "Orks"})
-    finally:
-        get_settings.cache_clear()
-
+    if True:
+        response = client.post("/api/v1/types", json={"name": "Orks"})
     assert response.status_code == 201
     assert response.json() == {
         "id": 1,
@@ -28,8 +23,7 @@ def test_post_types_creates_type_and_returns_zero_counts(database_url: str) -> N
         },
     }
 
-    engine = create_engine(database_url)
-    with engine.begin() as connection:
+    with db_engine.begin() as connection:
         stage_counts = connection.execute(
             text(
                 """
@@ -46,15 +40,13 @@ def test_post_types_creates_type_and_returns_zero_counts(database_url: str) -> N
     assert counts_by_stage == {stage: 0 for stage in STAGES}
 
 
-def test_post_types_returns_duplicate_error_for_existing_name(database_url: str) -> None:
+def test_post_types_returns_duplicate_error_for_existing_name(
+    client: TestClient, db_engine
+) -> None:
 
-    try:
-        client = TestClient(create_app())
+    if True:
         first_response = client.post("/api/v1/types", json={"name": "Aeldari"})
         second_response = client.post("/api/v1/types", json={"name": "Aeldari"})
-    finally:
-        get_settings.cache_clear()
-
     assert first_response.status_code == 201
     assert second_response.status_code == 400
     assert second_response.json() == {

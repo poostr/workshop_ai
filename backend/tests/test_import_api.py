@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 
-from app.config import get_settings
-from app.main import create_app
 
 
 ERR_INVALID_IMPORT_FORMAT = {
@@ -25,15 +23,13 @@ def _all_stages_zero(overrides: dict[str, int] | None = None) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 
-def test_post_import_merges_counts_and_appends_history(database_url: str) -> None:
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
+def test_post_import_merges_counts_and_appends_history(client: TestClient, db_engine) -> None:
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Alpha"})
         assert created.status_code == 201
 
-        with engine.begin() as connection:
+        with db_engine.begin() as connection:
             connection.execute(
                 text(
                     """
@@ -90,9 +86,6 @@ def test_post_import_merges_counts_and_appends_history(database_url: str) -> Non
             },
         )
         export_response = client.get("/api/v1/export")
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
     assert export_response.status_code == 200
@@ -144,13 +137,13 @@ def test_post_import_merges_counts_and_appends_history(database_url: str) -> Non
     }
 
 
-def test_post_import_creates_new_type_with_counts_and_history(database_url: str) -> None:
+def test_post_import_creates_new_type_with_counts_and_history(
+    client: TestClient, db_engine
+) -> None:
     """Import a type that does not yet exist — it should be created with given
     counts and history (pure creation, not a merge)."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         response = client.post(
             "/api/v1/import",
             json={
@@ -170,12 +163,9 @@ def test_post_import_creates_new_type_with_counts_and_history(database_url: str)
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
 
-    with engine.begin() as conn:
+    with db_engine.begin() as conn:
         type_row = conn.execute(text("SELECT id FROM miniature_types WHERE name = 'NewOnly'")).one()
         counts = dict(
             conn.execute(
@@ -196,11 +186,11 @@ def test_post_import_creates_new_type_with_counts_and_history(database_url: str)
     assert list(history) == [{"from_stage": "IN_BOX", "to_stage": "DONE", "qty": 3}]
 
 
-def test_post_import_repeated_import_doubles_counts_and_history(database_url: str) -> None:
+def test_post_import_repeated_import_doubles_counts_and_history(
+    client: TestClient, db_engine
+) -> None:
     """Importing the same payload twice doubles counts and appends history
     without deduplication (per PRD: dedupe не делаем)."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
     payload = {
         "types": [
@@ -219,15 +209,12 @@ def test_post_import_repeated_import_doubles_counts_and_history(database_url: st
         ]
     }
 
-    try:
+    if True:
         first = client.post("/api/v1/import", json=payload)
         assert first.status_code == 200
         second = client.post("/api/v1/import", json=payload)
         assert second.status_code == 200
-    finally:
-        get_settings.cache_clear()
-
-    with engine.begin() as conn:
+    with db_engine.begin() as conn:
         type_row = conn.execute(text("SELECT id FROM miniature_types WHERE name = 'Doubles'")).one()
         counts = dict(
             conn.execute(
@@ -245,21 +232,16 @@ def test_post_import_repeated_import_doubles_counts_and_history(database_url: st
     assert history_count == 2
 
 
-def test_post_import_empty_types_list_is_noop(database_url: str) -> None:
+def test_post_import_empty_types_list_is_noop(client: TestClient, db_engine) -> None:
     """Importing an empty types list succeeds without side effects."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         client.post("/api/v1/types", json={"name": "Existing"})
         response = client.post("/api/v1/import", json={"types": []})
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
 
-    with engine.begin() as conn:
+    with db_engine.begin() as conn:
         type_count = conn.execute(text("SELECT COUNT(*) FROM miniature_types")).scalar_one()
 
     assert type_count == 1
@@ -270,17 +252,17 @@ def test_post_import_empty_types_list_is_noop(database_url: str) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_post_import_rolls_back_all_changes_on_invalid_payload(database_url: str) -> None:
+def test_post_import_rolls_back_all_changes_on_invalid_payload(
+    client: TestClient, db_engine
+) -> None:
     """When the second type has duplicate stage_counts, the whole import
     (including the valid first type) must be rolled back."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Base"})
         assert created.status_code == 201
 
-        with engine.begin() as connection:
+        with db_engine.begin() as connection:
             connection.execute(
                 text(
                     """
@@ -314,13 +296,10 @@ def test_post_import_rolls_back_all_changes_on_invalid_payload(database_url: str
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
     assert response.json() == ERR_INVALID_IMPORT_FORMAT
 
-    with engine.begin() as connection:
+    with db_engine.begin() as connection:
         in_box_count = connection.execute(
             text("SELECT count FROM stage_counts WHERE type_id = 1 AND stage_name = 'IN_BOX'")
         ).scalar_one()
@@ -334,10 +313,9 @@ def test_post_import_rolls_back_all_changes_on_invalid_payload(database_url: str
     assert history_count == 0
 
 
-def test_post_import_rejects_missing_stage_counts(database_url: str) -> None:
-    client = TestClient(create_app())
+def test_post_import_rejects_missing_stage_counts(client: TestClient, db_engine) -> None:
 
-    try:
+    if True:
         response = client.post(
             "/api/v1/import",
             json={
@@ -355,31 +333,23 @@ def test_post_import_rejects_missing_stage_counts(database_url: str) -> None:
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
     assert response.json() == ERR_INVALID_IMPORT_FORMAT
 
 
-def test_post_import_rejects_completely_malformed_payload(database_url: str) -> None:
+def test_post_import_rejects_completely_malformed_payload(client: TestClient, db_engine) -> None:
     """A payload without the required 'types' key must be rejected."""
-    client = TestClient(create_app())
 
-    try:
+    if True:
         response = client.post("/api/v1/import", json={"invalid": True})
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
     assert response.json() == ERR_INVALID_IMPORT_FORMAT
 
 
-def test_post_import_rejects_invalid_stage_name_in_counts(database_url: str) -> None:
+def test_post_import_rejects_invalid_stage_name_in_counts(client: TestClient, db_engine) -> None:
     """A stage_counts entry with an unknown stage value must be rejected."""
-    client = TestClient(create_app())
 
-    try:
+    if True:
         response = client.post(
             "/api/v1/import",
             json={
@@ -398,18 +368,14 @@ def test_post_import_rejects_invalid_stage_name_in_counts(database_url: str) -> 
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
     assert response.json() == ERR_INVALID_IMPORT_FORMAT
 
 
-def test_post_import_rejects_invalid_stage_name_in_history(database_url: str) -> None:
+def test_post_import_rejects_invalid_stage_name_in_history(client: TestClient, db_engine) -> None:
     """History with an unknown from_stage/to_stage must be rejected."""
-    client = TestClient(create_app())
 
-    try:
+    if True:
         response = client.post(
             "/api/v1/import",
             json={
@@ -429,18 +395,14 @@ def test_post_import_rejects_invalid_stage_name_in_history(database_url: str) ->
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
     assert response.json() == ERR_INVALID_IMPORT_FORMAT
 
 
-def test_post_import_rejects_negative_count(database_url: str) -> None:
+def test_post_import_rejects_negative_count(client: TestClient, db_engine) -> None:
     """Negative count values in stage_counts must be rejected."""
-    client = TestClient(create_app())
 
-    try:
+    if True:
         response = client.post(
             "/api/v1/import",
             json={
@@ -459,18 +421,14 @@ def test_post_import_rejects_negative_count(database_url: str) -> None:
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
     assert response.json() == ERR_INVALID_IMPORT_FORMAT
 
 
-def test_post_import_rejects_extra_fields(database_url: str) -> None:
+def test_post_import_rejects_extra_fields(client: TestClient, db_engine) -> None:
     """Extra fields in the import payload must be rejected (extra='forbid')."""
-    client = TestClient(create_app())
 
-    try:
+    if True:
         response = client.post(
             "/api/v1/import",
             json={
@@ -484,27 +442,22 @@ def test_post_import_rejects_extra_fields(database_url: str) -> None:
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
     assert response.json() == ERR_INVALID_IMPORT_FORMAT
 
 
 def test_post_import_atomicity_valid_type_rolled_back_when_later_type_fails(
-    database_url: str,
+    client: TestClient, db_engine
 ) -> None:
     """If the first type in the payload would succeed but a later type causes
     a DB-level error, the entire import is rolled back — including changes
     to the first type."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Survivor"})
         assert created.status_code == 201
 
-        with engine.begin() as conn:
+        with db_engine.begin() as conn:
             conn.execute(
                 text(
                     "UPDATE stage_counts SET count = 5 WHERE type_id = 1 AND stage_name = 'IN_BOX'"
@@ -548,12 +501,9 @@ def test_post_import_atomicity_valid_type_rolled_back_when_later_type_fails(
                 ]
             },
         )
-    finally:
-        get_settings.cache_clear()
-
     assert response.status_code == 400
 
-    with engine.begin() as conn:
+    with db_engine.begin() as conn:
         in_box = conn.execute(
             text("SELECT count FROM stage_counts WHERE type_id = 1 AND stage_name = 'IN_BOX'")
         ).scalar_one()

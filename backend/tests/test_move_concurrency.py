@@ -10,14 +10,12 @@ from __future__ import annotations
 import concurrent.futures
 
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-
-from app.config import get_settings
-from app.main import create_app
+from sqlalchemy import text
 
 
-def _seed_stage(engine, type_id: int, stage: str, count: int) -> None:
-    with engine.begin() as conn:
+
+def _seed_stage(db_engine, type_id: int, stage: str, count: int) -> None:
+    with db_engine.begin() as conn:
         conn.execute(
             text(
                 "UPDATE stage_counts SET count = :count "
@@ -27,8 +25,8 @@ def _seed_stage(engine, type_id: int, stage: str, count: int) -> None:
         )
 
 
-def _get_counts(engine, type_id: int) -> dict[str, int]:
-    with engine.begin() as conn:
+def _get_counts(db_engine, type_id: int) -> dict[str, int]:
+    with db_engine.begin() as conn:
         rows = (
             conn.execute(
                 text("SELECT stage_name, count FROM stage_counts WHERE type_id = :type_id"),
@@ -40,8 +38,8 @@ def _get_counts(engine, type_id: int) -> dict[str, int]:
     return {row["stage_name"]: row["count"] for row in rows}
 
 
-def _count_history(engine, type_id: int) -> int:
-    with engine.begin() as conn:
+def _count_history(db_engine, type_id: int) -> int:
+    with db_engine.begin() as conn:
         return conn.execute(
             text("SELECT COUNT(*) FROM history_logs WHERE type_id = :tid"),
             {"tid": type_id},
@@ -51,27 +49,24 @@ def _count_history(engine, type_id: int) -> int:
 # ── Concurrency ──────────────────────────────────────────────────────────────
 
 
-def test_concurrent_single_unit_moves_never_overdraw(database_url: str) -> None:
+def test_concurrent_single_unit_moves_never_overdraw(client: TestClient, db_engine) -> None:
     """
     20 parallel requests each moving 1 unit from IN_BOX (seeded with 10).
     Pessimistic lock must guarantee exactly 10 succeed, 10 fail, and
     final IN_BOX=0, BUILDING=10.
     """
-    app = create_app()
-    client = TestClient(app)
-    engine = create_engine(database_url)
 
     initial_qty = 10
     parallel_requests = 20
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Concurrency A"})
         assert created.status_code == 201
         type_id = created.json()["id"]
-        _seed_stage(engine, type_id, "IN_BOX", initial_qty)
+        _seed_stage(db_engine, type_id, "IN_BOX", initial_qty)
 
         def fire_move(_: int) -> int:
-            thread_client = TestClient(app)
+            thread_client = client
             resp = thread_client.post(
                 f"/api/v1/types/{type_id}/move",
                 json={"from_stage": "IN_BOX", "to_stage": "BUILDING", "qty": 1},
@@ -84,35 +79,30 @@ def test_concurrent_single_unit_moves_never_overdraw(database_url: str) -> None:
         assert codes.count(200) == initial_qty
         assert codes.count(400) == parallel_requests - initial_qty
 
-        counts = _get_counts(engine, type_id)
+        counts = _get_counts(db_engine, type_id)
         assert counts["IN_BOX"] == 0
         assert counts["BUILDING"] == initial_qty
-        assert _count_history(engine, type_id) == initial_qty
-    finally:
-        get_settings.cache_clear()
+        assert _count_history(db_engine, type_id) == initial_qty
 
 
-def test_concurrent_batch_moves_respect_available_qty(database_url: str) -> None:
+def test_concurrent_batch_moves_respect_available_qty(client: TestClient, db_engine) -> None:
     """
     6 parallel requests each moving 5 units from IN_BOX (seeded with 15).
     Exactly 3 should succeed (15 / 5), 3 should fail.
     """
-    app = create_app()
-    client = TestClient(app)
-    engine = create_engine(database_url)
 
     initial_qty = 15
     move_qty = 5
     parallel_requests = 6
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Concurrency B"})
         assert created.status_code == 201
         type_id = created.json()["id"]
-        _seed_stage(engine, type_id, "IN_BOX", initial_qty)
+        _seed_stage(db_engine, type_id, "IN_BOX", initial_qty)
 
         def fire_move(_: int) -> int:
-            thread_client = TestClient(app)
+            thread_client = client
             resp = thread_client.post(
                 f"/api/v1/types/{type_id}/move",
                 json={"from_stage": "IN_BOX", "to_stage": "BUILDING", "qty": move_qty},
@@ -126,40 +116,33 @@ def test_concurrent_batch_moves_respect_available_qty(database_url: str) -> None
         assert codes.count(200) == expected_successes
         assert codes.count(400) == parallel_requests - expected_successes
 
-        counts = _get_counts(engine, type_id)
+        counts = _get_counts(db_engine, type_id)
         assert counts["IN_BOX"] == 0
         assert counts["BUILDING"] == initial_qty
-    finally:
-        get_settings.cache_clear()
 
 
-def test_concurrent_moves_on_different_stages_are_independent(database_url: str) -> None:
+def test_concurrent_moves_on_different_stages_are_independent(client: TestClient, db_engine) -> None:
     """
     Concurrent moves from different source stages do not block each other
     and produce correct totals.
     """
-    app = create_app()
-    client = TestClient(app)
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Multi Stage"})
         assert created.status_code == 201
         type_id = created.json()["id"]
 
-        _seed_stage(engine, type_id, "IN_BOX", 5)
-        _seed_stage(engine, type_id, "BUILDING", 5)
+        _seed_stage(db_engine, type_id, "IN_BOX", 5)
+        _seed_stage(db_engine, type_id, "BUILDING", 5)
 
         def move_inbox_to_building(_: int) -> int:
-            c = TestClient(app)
-            return c.post(
+            return client.post(
                 f"/api/v1/types/{type_id}/move",
                 json={"from_stage": "IN_BOX", "to_stage": "BUILDING", "qty": 1},
             ).status_code
 
         def move_building_to_painting(_: int) -> int:
-            c = TestClient(app)
-            return c.post(
+            return client.post(
                 f"/api/v1/types/{type_id}/move",
                 json={"from_stage": "BUILDING", "to_stage": "PAINTING", "qty": 1},
             ).status_code
@@ -177,27 +160,23 @@ def test_concurrent_moves_on_different_stages_are_independent(database_url: str)
         assert inbox_ok == 5
         assert building_ok <= 10  # at most 5 original + 5 incoming
 
-        counts = _get_counts(engine, type_id)
+        counts = _get_counts(db_engine, type_id)
         assert counts["IN_BOX"] == 0
         assert counts["BUILDING"] == 5 + inbox_ok - building_ok
         assert counts["PAINTING"] == building_ok
-    finally:
-        get_settings.cache_clear()
 
 
 # ── Invariants ───────────────────────────────────────────────────────────────
 
 
-def test_move_exact_qty_drains_source_to_zero(database_url: str) -> None:
+def test_move_exact_qty_drains_source_to_zero(client: TestClient, db_engine) -> None:
     """Moving exactly the available count leaves source at 0."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Drain"})
         assert created.status_code == 201
         type_id = created.json()["id"]
-        _seed_stage(engine, type_id, "IN_BOX", 7)
+        _seed_stage(db_engine, type_id, "IN_BOX", 7)
 
         resp = client.post(
             f"/api/v1/types/{type_id}/move",
@@ -207,20 +186,16 @@ def test_move_exact_qty_drains_source_to_zero(database_url: str) -> None:
         assert resp.status_code == 200
         assert resp.json()["counts"]["in_box"] == 0
         assert resp.json()["counts"]["building"] == 7
-    finally:
-        get_settings.cache_clear()
 
 
-def test_move_skip_stages_is_allowed(database_url: str) -> None:
+def test_move_skip_stages_is_allowed(client: TestClient, db_engine) -> None:
     """IN_BOX -> DONE is a valid forward transition (skip intermediate stages)."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "Skip"})
         assert created.status_code == 201
         type_id = created.json()["id"]
-        _seed_stage(engine, type_id, "IN_BOX", 3)
+        _seed_stage(db_engine, type_id, "IN_BOX", 3)
 
         resp = client.post(
             f"/api/v1/types/{type_id}/move",
@@ -230,15 +205,12 @@ def test_move_skip_stages_is_allowed(database_url: str) -> None:
         assert resp.status_code == 200
         assert resp.json()["counts"]["in_box"] == 1
         assert resp.json()["counts"]["done"] == 2
-    finally:
-        get_settings.cache_clear()
 
 
-def test_move_same_stage_is_rejected(database_url: str) -> None:
+def test_move_same_stage_is_rejected(client: TestClient, db_engine) -> None:
     """from_stage == to_stage is not a forward transition."""
-    client = TestClient(create_app())
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "SameStage"})
         assert created.status_code == 201
         type_id = created.json()["id"]
@@ -250,33 +222,26 @@ def test_move_same_stage_is_rejected(database_url: str) -> None:
 
         assert resp.status_code == 400
         assert resp.json()["code"] == "ERR_INVALID_STAGE_TRANSITION"
-    finally:
-        get_settings.cache_clear()
 
 
-def test_move_nonexistent_type_returns_404(database_url: str) -> None:
-    client = TestClient(create_app())
+def test_move_nonexistent_type_returns_404(client: TestClient, db_engine) -> None:
 
-    try:
+    if True:
         resp = client.post(
             "/api/v1/types/999999/move",
             json={"from_stage": "IN_BOX", "to_stage": "BUILDING", "qty": 1},
         )
         assert resp.status_code == 404
-    finally:
-        get_settings.cache_clear()
 
 
-def test_sequential_moves_accumulate_correctly(database_url: str) -> None:
+def test_sequential_moves_accumulate_correctly(client: TestClient, db_engine) -> None:
     """Multi-step moves through the pipeline accumulate as expected."""
-    client = TestClient(create_app())
-    engine = create_engine(database_url)
 
-    try:
+    if True:
         created = client.post("/api/v1/types", json={"name": "MultiStep"})
         assert created.status_code == 201
         type_id = created.json()["id"]
-        _seed_stage(engine, type_id, "IN_BOX", 10)
+        _seed_stage(db_engine, type_id, "IN_BOX", 10)
 
         assert (
             client.post(
@@ -308,6 +273,4 @@ def test_sequential_moves_accumulate_correctly(database_url: str) -> None:
             "painting": 2,
             "done": 5,
         }
-        assert _count_history(engine, type_id) == 3
-    finally:
-        get_settings.cache_clear()
+        assert _count_history(db_engine, type_id) == 3

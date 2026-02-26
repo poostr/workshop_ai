@@ -11,6 +11,8 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.config import get_settings  # noqa: E402
+from app.main import create_app  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 
 @pytest.fixture
@@ -37,3 +39,23 @@ def database_url(monkeypatch):
     command.upgrade(alembic_config, "head")
 
     return db_url
+
+
+@pytest.fixture
+def client(database_url):
+    """Provides a TestClient with a fresh database and cleared cache."""
+    test_client = TestClient(create_app())
+    try:
+        yield test_client
+    finally:
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+def db_engine(database_url):
+    """Provides an SQLAlchemy engine connected to the test database."""
+    engine = create_engine(database_url)
+    try:
+        yield engine
+    finally:
+        engine.dispose()

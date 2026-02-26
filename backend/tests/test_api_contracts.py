@@ -6,7 +6,7 @@ from app.api.v1.schemas import TypeMoveRequest
 from app.main import create_app
 
 
-def test_business_error_has_unified_contract() -> None:
+def test_business_error_has_unified_contract(database_url: str) -> None:
     app = create_app()
 
     @app.get("/_test/business-error")
@@ -25,7 +25,7 @@ def test_business_error_has_unified_contract() -> None:
     }
 
 
-def test_request_validation_uses_contract_format() -> None:
+def test_request_validation_uses_contract_format(database_url: str) -> None:
     app = create_app()
 
     @app.post("/_test/move")
@@ -44,7 +44,7 @@ def test_request_validation_uses_contract_format() -> None:
     }
 
 
-def test_type_move_request_uses_strict_validation() -> None:
+def test_type_move_request_uses_strict_validation(database_url: str) -> None:
     app = FastAPI()
 
     @app.post("/_test/move-strict")

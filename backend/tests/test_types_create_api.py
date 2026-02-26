@@ -10,8 +10,6 @@ from app.domain.stages import STAGES
 from app.main import create_app
 
 
-
-
 def test_post_types_creates_type_and_returns_zero_counts(database_url: str) -> None:
 
     try:

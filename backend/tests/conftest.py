@@ -12,12 +12,13 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.config import get_settings
 
+
 @pytest.fixture
 def database_url(monkeypatch):
     """Provides a fresh PostgreSQL database URL and applies migrations."""
     db_url = os.environ.get(
         "DATABASE_URL",
-        "postgresql+psycopg://test_user:test_password@localhost:5433/miniatures_test"
+        "postgresql+psycopg://test_user:test_password@localhost:5433/miniatures_test",
     )
     # Configure app to use this URL
     monkeypatch.setenv("DATABASE_URL", db_url)

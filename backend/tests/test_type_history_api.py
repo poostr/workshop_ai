@@ -9,11 +9,7 @@ from app.config import get_settings
 from app.main import create_app
 
 
-
-
-def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
-    database_url: str
-) -> None:
+def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(database_url: str) -> None:
     client = TestClient(create_app())
     engine = create_engine(database_url)
 
@@ -56,9 +52,7 @@ def test_get_type_history_groups_adjacent_events_by_299_300_301_seconds(
     }
 
 
-def test_get_type_history_does_not_group_non_adjacent_equal_transitions(
-    database_url: str
-) -> None:
+def test_get_type_history_does_not_group_non_adjacent_equal_transitions(database_url: str) -> None:
     client = TestClient(create_app())
     engine = create_engine(database_url)
 

@@ -9,8 +9,6 @@ from app.config import get_settings
 from app.main import create_app
 
 
-
-
 def test_post_import_merges_counts_and_appends_history(database_url: str) -> None:
     client = TestClient(create_app())
     engine = create_engine(database_url)

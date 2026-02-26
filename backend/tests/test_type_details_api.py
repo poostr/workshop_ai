@@ -9,8 +9,6 @@ from app.config import get_settings
 from app.main import create_app
 
 
-
-
 def test_get_type_returns_type_details_with_all_stage_counts(database_url: str) -> None:
 
     engine = create_engine(database_url)

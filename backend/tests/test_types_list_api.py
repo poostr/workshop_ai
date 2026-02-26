@@ -9,8 +9,6 @@ from app.config import get_settings
 from app.main import create_app
 
 
-
-
 def test_get_types_returns_empty_list_for_empty_database(database_url: str) -> None:
 
     try:

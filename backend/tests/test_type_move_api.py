@@ -9,8 +9,6 @@ from app.config import get_settings
 from app.main import create_app
 
 
-
-
 def test_post_move_updates_counts_and_writes_history(database_url: str) -> None:
     client = TestClient(create_app())
 

@@ -286,7 +286,7 @@ Task Context
 Task DOD
 - Есть тесты на конкурентность (параллельные запросы), подтверждающие корректные итоговые counts.
 
-- [ ] QA-003 Tests: history grouping границы времени
+- [x] QA-003 Tests: history grouping границы времени
 Task Context
 - PRD: группируем соседние одинаковые переходы при разнице <= 300 секунд.
 Task DOD

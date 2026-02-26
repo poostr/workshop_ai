@@ -272,7 +272,7 @@ Task DOD
 
 ## Этап E — Тесты (backend, минимальный e2e)
 
-- [ ] QA-001 Инфраструктура тестов backend с реальным Postgres
+- [x] QA-001 Инфраструктура тестов backend с реальным Postgres
 Task Context
 - Для `SELECT FOR UPDATE` и транзакций нужен Postgres (sqlite не подходит).
 - Нужна воспроизводимая команда запуска тестов.

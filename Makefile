@@ -13,7 +13,7 @@ backend-lint:
 	cd $(BACKEND_DIR) && $(BACKEND_PYTHON) -m ruff check app tests
 
 backend-test:
-	cd $(BACKEND_DIR) && $(BACKEND_PYTHON) -m pytest
+	docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from test-app
 
 frontend-format:
 	cd $(FRONTEND_DIR) && npm run format

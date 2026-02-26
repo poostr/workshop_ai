@@ -1,28 +1,10 @@
 from __future__ import annotations
 
-from pathlib import Path
-
-from alembic import command
-from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
-from app.config import get_settings
 from app.domain.stages import STAGES
 
-
-def test_alembic_upgrade_head_creates_schema(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "alembic_test.db"
-    database_url = f"sqlite+pysqlite:///{db_file}"
-
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    get_settings.cache_clear()
-
-    try:
-        alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-        command.upgrade(alembic_config, "head")
-    finally:
-        get_settings.cache_clear()
-
+def test_alembic_upgrade_head_creates_schema(database_url: str) -> None:
     engine = create_engine(database_url)
     inspector = inspect(engine)
 
@@ -34,19 +16,7 @@ def test_alembic_upgrade_head_creates_schema(tmp_path: Path, monkeypatch) -> Non
     }
 
 
-def test_type_insert_seeds_all_stage_counts(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "alembic_test.db"
-    database_url = f"sqlite+pysqlite:///{db_file}"
-
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    get_settings.cache_clear()
-
-    try:
-        alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-        command.upgrade(alembic_config, "head")
-    finally:
-        get_settings.cache_clear()
-
+def test_type_insert_seeds_all_stage_counts(database_url: str) -> None:
     engine = create_engine(database_url)
     with engine.begin() as connection:
         connection.execute(

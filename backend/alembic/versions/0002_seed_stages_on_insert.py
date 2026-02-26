@@ -14,7 +14,7 @@ from alembic import op
 from app.domain.stages import STAGES
 
 # revision identifiers, used by Alembic.
-revision: str = "0002_seed_stage_counts_on_type_insert"
+revision: str = "0002_seed_stages_on_insert"
 down_revision: str | None = "0001_init_schema_placeholder"
 branch_labels: Sequence[str] | None = None
 depends_on: Sequence[str] | None = None

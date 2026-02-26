@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
@@ -11,20 +9,9 @@ from app.config import get_settings
 from app.main import create_app
 
 
-def _migrate_sqlite_database(db_file: Path, monkeypatch) -> str:
-    database_url = f"sqlite+pysqlite:///{db_file}"
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    get_settings.cache_clear()
-
-    alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    command.upgrade(alembic_config, "head")
-
-    return database_url
 
 
-def test_post_move_updates_counts_and_writes_history(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "type_move_success.db"
-    database_url = _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_move_updates_counts_and_writes_history(database_url: str) -> None:
     client = TestClient(create_app())
 
     engine = create_engine(database_url)
@@ -81,9 +68,7 @@ def test_post_move_updates_counts_and_writes_history(tmp_path: Path, monkeypatch
     assert history == [{"from_stage": "IN_BOX", "to_stage": "PRIMING", "qty": 4}]
 
 
-def test_post_move_returns_insufficient_qty_error(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "type_move_insufficient_qty.db"
-    database_url = _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_move_returns_insufficient_qty_error(database_url: str) -> None:
     client = TestClient(create_app())
 
     engine = create_engine(database_url)
@@ -124,9 +109,7 @@ def test_post_move_returns_insufficient_qty_error(tmp_path: Path, monkeypatch) -
     assert history_count == 0
 
 
-def test_post_move_returns_invalid_transition_error(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "type_move_invalid_transition.db"
-    _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_move_returns_invalid_transition_error(database_url: str) -> None:
     client = TestClient(create_app())
 
     try:

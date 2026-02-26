@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
@@ -12,20 +10,9 @@ from app.domain.stages import STAGES
 from app.main import create_app
 
 
-def _migrate_sqlite_database(db_file: Path, monkeypatch) -> str:
-    database_url = f"sqlite+pysqlite:///{db_file}"
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    get_settings.cache_clear()
-
-    alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    command.upgrade(alembic_config, "head")
-
-    return database_url
 
 
-def test_post_types_creates_type_and_returns_zero_counts(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "types_create_success.db"
-    database_url = _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_types_creates_type_and_returns_zero_counts(database_url: str) -> None:
 
     try:
         response = TestClient(create_app()).post("/api/v1/types", json={"name": "Orks"})
@@ -63,9 +50,7 @@ def test_post_types_creates_type_and_returns_zero_counts(tmp_path: Path, monkeyp
     assert counts_by_stage == {stage: 0 for stage in STAGES}
 
 
-def test_post_types_returns_duplicate_error_for_existing_name(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "types_create_duplicate.db"
-    _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_types_returns_duplicate_error_for_existing_name(database_url: str) -> None:
 
     try:
         client = TestClient(create_app())

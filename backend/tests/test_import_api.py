@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
@@ -11,20 +9,9 @@ from app.config import get_settings
 from app.main import create_app
 
 
-def _migrate_sqlite_database(db_file: Path, monkeypatch) -> str:
-    database_url = f"sqlite+pysqlite:///{db_file}"
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    get_settings.cache_clear()
-
-    alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    command.upgrade(alembic_config, "head")
-
-    return database_url
 
 
-def test_post_import_merges_counts_and_appends_history(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "import_merge.db"
-    database_url = _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_import_merges_counts_and_appends_history(database_url: str) -> None:
     client = TestClient(create_app())
     engine = create_engine(database_url)
 
@@ -73,7 +60,7 @@ def test_post_import_merges_counts_and_appends_history(tmp_path: Path, monkeypat
                                 "from_stage": "BUILDING",
                                 "to_stage": "PRIMING",
                                 "qty": 2,
-                                "created_at": "2026-02-25T09:00:00",
+                                "created_at": "2026-02-25T09:00:00Z",
                             }
                         ],
                     },
@@ -91,7 +78,7 @@ def test_post_import_merges_counts_and_appends_history(tmp_path: Path, monkeypat
                                 "from_stage": "IN_BOX",
                                 "to_stage": "PAINTING",
                                 "qty": 1,
-                                "created_at": "2026-02-25T10:00:00",
+                                "created_at": "2026-02-25T10:00:00Z",
                             }
                         ],
                     },
@@ -121,13 +108,13 @@ def test_post_import_merges_counts_and_appends_history(tmp_path: Path, monkeypat
                         "from_stage": "IN_BOX",
                         "to_stage": "BUILDING",
                         "qty": 1,
-                        "created_at": "2026-02-25T08:00:00",
+                        "created_at": "2026-02-25T08:00:00Z",
                     },
                     {
                         "from_stage": "BUILDING",
                         "to_stage": "PRIMING",
                         "qty": 2,
-                        "created_at": "2026-02-25T09:00:00",
+                        "created_at": "2026-02-25T09:00:00Z",
                     },
                 ],
             },
@@ -145,7 +132,7 @@ def test_post_import_merges_counts_and_appends_history(tmp_path: Path, monkeypat
                         "from_stage": "IN_BOX",
                         "to_stage": "PAINTING",
                         "qty": 1,
-                        "created_at": "2026-02-25T10:00:00",
+                        "created_at": "2026-02-25T10:00:00Z",
                     }
                 ],
             },
@@ -153,9 +140,7 @@ def test_post_import_merges_counts_and_appends_history(tmp_path: Path, monkeypat
     }
 
 
-def test_post_import_rolls_back_all_changes_on_invalid_payload(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "import_rollback.db"
-    database_url = _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_import_rolls_back_all_changes_on_invalid_payload(database_url: str) -> None:
     client = TestClient(create_app())
     engine = create_engine(database_url)
 
@@ -232,9 +217,7 @@ def test_post_import_rolls_back_all_changes_on_invalid_payload(tmp_path: Path, m
     assert history_count == 0
 
 
-def test_post_import_rejects_missing_stage_counts(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "import_missing_stage.db"
-    _migrate_sqlite_database(db_file, monkeypatch)
+def test_post_import_rejects_missing_stage_counts(database_url: str) -> None:
     client = TestClient(create_app())
 
     try:

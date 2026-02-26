@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 
@@ -11,22 +9,11 @@ from app.config import get_settings
 from app.main import create_app
 
 
-def _migrate_sqlite_database(db_file: Path, monkeypatch) -> str:
-    database_url = f"sqlite+pysqlite:///{db_file}"
-    monkeypatch.setenv("DATABASE_URL", database_url)
-    get_settings.cache_clear()
-
-    alembic_config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-    command.upgrade(alembic_config, "head")
-
-    return database_url
 
 
 def test_get_export_returns_empty_types_list_for_empty_database(
-    tmp_path: Path, monkeypatch
+    database_url: str
 ) -> None:
-    db_file = tmp_path / "export_empty.db"
-    _migrate_sqlite_database(db_file, monkeypatch)
     client = TestClient(create_app())
 
     try:
@@ -38,9 +25,7 @@ def test_get_export_returns_empty_types_list_for_empty_database(
     assert response.json() == {"types": []}
 
 
-def test_get_export_returns_types_counts_and_full_history(tmp_path: Path, monkeypatch) -> None:
-    db_file = tmp_path / "export_with_data.db"
-    database_url = _migrate_sqlite_database(db_file, monkeypatch)
+def test_get_export_returns_types_counts_and_full_history(database_url: str) -> None:
     client = TestClient(create_app())
     engine = create_engine(database_url)
 
@@ -98,13 +83,13 @@ def test_get_export_returns_types_counts_and_full_history(tmp_path: Path, monkey
                         "from_stage": "IN_BOX",
                         "to_stage": "BUILDING",
                         "qty": 2,
-                        "created_at": "2026-02-25T09:00:00",
+                        "created_at": "2026-02-25T09:00:00Z",
                     },
                     {
                         "from_stage": "BUILDING",
                         "to_stage": "PAINTING",
                         "qty": 1,
-                        "created_at": "2026-02-25T09:10:00",
+                        "created_at": "2026-02-25T09:10:00Z",
                     },
                 ],
             },
@@ -122,7 +107,7 @@ def test_get_export_returns_types_counts_and_full_history(tmp_path: Path, monkey
                         "from_stage": "IN_BOX",
                         "to_stage": "PRIMING",
                         "qty": 4,
-                        "created_at": "2026-02-25T10:00:00",
+                        "created_at": "2026-02-25T10:00:00Z",
                     }
                 ],
             },

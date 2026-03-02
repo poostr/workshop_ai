@@ -16,7 +16,7 @@ class ErrorCode(StrEnum):
     ERR_INSUFFICIENT_QTY = "ERR_INSUFFICIENT_QTY"
     ERR_DUPLICATE_TYPE_NAME = "ERR_DUPLICATE_TYPE_NAME"
     ERR_INVALID_IMPORT_FORMAT = "ERR_INVALID_IMPORT_FORMAT"
-
+    ERR_PAYLOAD_TOO_LARGE = "ERR_PAYLOAD_TOO_LARGE"
 
 class ApiContractError(Exception):
     def __init__(self, code: ErrorCode, message: str) -> None:

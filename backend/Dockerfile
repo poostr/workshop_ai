@@ -12,7 +12,11 @@ COPY backend /app
 
 EXPOSE 8000
 
-RUN chmod +x /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh \
+    && groupadd -r appgroup && useradd -r -g appgroup appuser \
+    && chown -R appuser:appgroup /app
+
+USER appuser
 
 CMD ["/app/entrypoint.sh"]
 

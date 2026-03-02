@@ -37,7 +37,13 @@ services:
       dockerfile: ops/nginx/Dockerfile
     container_name: miniatures-nginx
     ports:
-      - "8080:80"
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     depends_on:
       - app
 

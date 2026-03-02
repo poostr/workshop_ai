@@ -102,8 +102,8 @@ class ImportTypeItem(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True, str_strip_whitespace=True)
 
     name: str = Field(min_length=1, max_length=255)
-    stage_counts: list[ImportStageCount]
-    history: list[ImportHistoryItem]
+    stage_counts: list[ImportStageCount] = Field(max_length=5)
+    history: list[ImportHistoryItem] = Field(max_length=100_000)
 
     @model_validator(mode="after")
     def validate_stage_counts_cover_all_stages(self) -> "ImportTypeItem":
@@ -118,7 +118,7 @@ class ImportTypeItem(BaseModel):
 class ImportRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    types: list[ImportTypeItem]
+    types: list[ImportTypeItem] = Field(max_length=1000)
 
 
 class ImportResponse(BaseModel):

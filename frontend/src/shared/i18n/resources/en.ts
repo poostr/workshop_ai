@@ -17,6 +17,7 @@ export const en = {
     ERR_INVALID_STAGE: "Invalid stage.",
     ERR_INVALID_IMPORT_FORMAT: "Invalid import format.",
     ERR_VALIDATION: "Request validation failed.",
+    ERR_PAYLOAD_TOO_LARGE: "Import payload exceeds size limit (max 5MB).",
     ERR_UNKNOWN: "An unknown error occurred.",
   },
   pages: {

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Final
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Request, status
 from pydantic import ValidationError
 from sqlalchemy import Select, select
 from sqlalchemy.exc import IntegrityError
@@ -237,6 +237,15 @@ def _parse_import_payload(raw_payload: dict[str, object]) -> ImportRequest:
         ) from error
 
 
+def _check_payload_size(request: Request) -> None:
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > 5 * 1024 * 1024:
+        raise ApiContractError(
+            code=ErrorCode.ERR_PAYLOAD_TOO_LARGE,
+            message="Import payload exceeds the 5MB limit.",
+        )
+
+
 def _build_stage_delta_map(item: ImportTypeItem) -> dict[str, int]:
     return {stage_count.stage.value: stage_count.count for stage_count in item.stage_counts}
 
@@ -450,8 +459,10 @@ def export_state(db_session: Session = Depends(get_db_session)) -> ExportRespons
 
 @router.post("/import", tags=["import-export"], response_model=ImportResponse)
 def import_state(
+    request: Request,
     raw_payload: dict[str, object] = Body(...),
     db_session: Session = Depends(get_db_session),
+    _size_check: None = Depends(_check_payload_size),
 ) -> ImportResponse:
     payload = _parse_import_payload(raw_payload)
 

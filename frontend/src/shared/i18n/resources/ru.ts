@@ -17,6 +17,7 @@ export const ru = {
     ERR_INVALID_STAGE: "Некорректная стадия.",
     ERR_INVALID_IMPORT_FORMAT: "Некорректный формат импорта.",
     ERR_VALIDATION: "Ошибка валидации запроса.",
+    ERR_PAYLOAD_TOO_LARGE: "Размер файла импорта превышает лимит (макс. 5МБ).",
     ERR_UNKNOWN: "Произошла неизвестная ошибка.",
   },
   pages: {
